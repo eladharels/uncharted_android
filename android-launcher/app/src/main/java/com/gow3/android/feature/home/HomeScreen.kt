@@ -98,6 +98,14 @@ internal fun HomeScreen(
     // 游戏身份状态：catalog 或 CatalogProblem（不再吞错），驱动 Home 身份卡三态。
     var identity by remember { mutableStateOf<GameIdentityState>(GameIdentityState.Loading) }
     var identityRevision by remember { mutableIntStateOf(0) }
+    // uncharted_android: the collection's folder gets a game picker instead of the God of War III
+    // presets, and the identity card names the chosen game.
+    val uncharted = remember(gameDir) {
+        com.gow3.android.data.UnchartedGames.isCollection(gameDir?.let { java.io.File(it) })
+    }
+    val ucGame = remember(gameDir, iniValues) {
+        com.gow3.android.data.UnchartedGames.selected(gameDir?.let { java.io.File(it) }, iniValues)
+    }
     // 驱动卡片的重扫信号：回到前台 / 目录变化 / 本页写入选择时都会递增。
     var driverRevision by remember { mutableIntStateOf(0) }
     // 驱动选择面板的数据：每次 revision 递增（前台/目录变化/本页写入）重扫磁盘。
@@ -210,7 +218,7 @@ internal fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                GameIdentityCard(identity, onOpenStorageCategory)
+                GameIdentityCard(identity, onOpenStorageCategory, ucGame)
                 LaunchButton(::launch)
             }
             Column(
@@ -218,7 +226,8 @@ internal fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 UserSavesZone(hasSaves)
-                PresetSegmented(identity, iniValues, ::applyPreset)
+                if (uncharted) UnchartedGamePicker(iniValues) { saveUpdates(mapOf("uc_game" to it)) }
+                else PresetSegmented(identity, iniValues, ::applyPreset)
                 DriverSelector(
                     identity, iniValues, driverEntries,
                     // 面板只回传 id：展示名从扫描结果解析（系统驱动回退到本地化文案）。
@@ -240,8 +249,9 @@ internal fun HomeScreen(
     } else {
         ScreenColumn(horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(28.dp))
-            GameIdentityCard(identity, onOpenStorageCategory)
-            PresetSegmented(identity, iniValues, ::applyPreset)
+            GameIdentityCard(identity, onOpenStorageCategory, ucGame)
+            if (uncharted) UnchartedGamePicker(iniValues) { saveUpdates(mapOf("uc_game" to it)) }
+            else PresetSegmented(identity, iniValues, ::applyPreset)
             DriverSelector(
                 identity, iniValues, driverEntries,
                 // 面板只回传 id：展示名从扫描结果解析（系统驱动回退到本地化文案）。
@@ -320,7 +330,11 @@ private fun currentUpdateDir(context: Context): String? =
  * 存储分类。加载中呈骨架态且不阻塞页面其它区域。
  */
 @Composable
-private fun GameIdentityCard(state: GameIdentityState, onOpenStorage: () -> Unit) {
+private fun GameIdentityCard(
+    state: GameIdentityState,
+    onOpenStorage: () -> Unit,
+    ucGame: com.gow3.android.data.UnchartedGames.Game? = null,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -339,8 +353,11 @@ private fun GameIdentityCard(state: GameIdentityState, onOpenStorage: () -> Unit
             }
             is GameIdentityState.Ready -> {
                 val catalog = state.catalog
-                Text(stringResource(R.string.title_god_of_war_iii), color = LauncherColors.textPrimary, fontFamily = FontFamily.Serif, fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
-                Text(stringResource(R.string.title_remastered), color = LauncherColors.textMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 2.sp)
+                val title = if (ucGame != null) "UNCHARTED" else stringResource(R.string.title_god_of_war_iii)
+                val subtitle = ucGame?.title?.substringAfter(": ", ucGame.title)?.uppercase()
+                    ?: stringResource(R.string.title_remastered)
+                Text(title, color = LauncherColors.textPrimary, fontFamily = FontFamily.Serif, fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                Text(subtitle, color = LauncherColors.textMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 2.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IdentityBadge(catalog.titleId)
                     IdentityBadge("VER " + catalog.appVersion)

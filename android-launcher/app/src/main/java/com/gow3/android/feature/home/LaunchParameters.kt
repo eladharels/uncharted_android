@@ -118,6 +118,53 @@ internal fun PresetSegmented(
     }
 }
 
+/**
+ * uncharted_android: which game of the collection the LAUNCH button starts (`uc_game` in gow3.ini,
+ * read by Gow3Prepare through UnchartedGames). One tap selects; it applies on the next launch.
+ */
+@Composable
+internal fun UnchartedGamePicker(ini: Map<String, String>, select: (String) -> Unit) {
+    val games = com.gow3.android.data.UnchartedGames.GAMES
+    val current = ini["uc_game"]?.trim()?.lowercase()?.takeIf { key -> games.any { it.key == key } } ?: "uc3"
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel("GAME")
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(LauncherColors.navSurface)
+                .border(BorderStroke(1.dp, LauncherColors.gold.copy(alpha = 0.35f)), RoundedCornerShape(10.dp)),
+        ) {
+            games.forEachIndexed { index, game ->
+                val active = game.key == current
+                Text(
+                    "Uncharted ${index + 1}",
+                    color = if (active) LauncherColors.textPrimary else LauncherColors.textMuted,
+                    fontSize = 13.sp,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (active) LauncherColors.crimson else Color.Transparent)
+                        .clickable { select(game.key) }
+                        .padding(vertical = 12.dp),
+                )
+                if (index < games.lastIndex) {
+                    Box(Modifier.width(1.dp).height(36.dp).background(LauncherColors.gold.copy(alpha = 0.2f)))
+                }
+            }
+        }
+        val game = games.first { it.key == current }
+        Text(
+            game.title + " · " + game.status,
+            color = LauncherColors.textMuted,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+        )
+    }
+}
+
 @Composable
 private fun DisabledBar(text: String) {
     Text(
