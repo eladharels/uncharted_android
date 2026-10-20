@@ -390,7 +390,7 @@ final class SettingsDialog {
         File temporary=new File(state.getPath()+".tmp");
         try (Writer w=new OutputStreamWriter(new FileOutputStream(temporary),"UTF-8")) {
             w.write((health ? "1" : "0")+(items ? "1" : "0")+"\n");
-        } catch (Exception ex) { android.util.Log.e("God of War III","cheats: "+ex); return false; }
+        } catch (Exception ex) { android.util.Log.e("Uncharted","cheats: "+ex); return false; }
         return temporary.renameTo(state);
     }
      */
@@ -458,7 +458,7 @@ final class SettingsDialog {
                     wr.write("flow="+flow+"\n");
                     wr.write("performance=1\nfp16=1\n");
                 } catch (Exception ex) {
-                    android.util.Log.e("God of War III","framegen state: "+ex);
+                    android.util.Log.e("Uncharted","framegen state: "+ex);
                 }
                 boolean ok=tmp.renameTo(state);
                 android.widget.Toast.makeText(activity,

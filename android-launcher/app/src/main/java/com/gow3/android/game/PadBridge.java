@@ -64,7 +64,7 @@ final class PadBridge {
                 out.write(snapshot.getBytes(StandardCharsets.US_ASCII));
             }
             if (!temp.renameTo(state)) throw new java.io.IOException("Cannot restore controller state");
-        } catch (java.io.IOException ex) { android.util.Log.e("God of War III","Controller bridge restore",ex); }
+        } catch (java.io.IOException ex) { android.util.Log.e("Uncharted","Controller bridge restore",ex); }
     }
 
     void setDialogActive(boolean on) { dialogActive=on; }
@@ -154,7 +154,7 @@ final class PadBridge {
                 out.write(text.toString().getBytes(StandardCharsets.US_ASCII));
             }
             if (!temp.renameTo(state)) throw new java.io.IOException("Cannot publish controller state");
-        } catch (java.io.IOException ex) { android.util.Log.e("God of War III", "Controller bridge",ex); }
+        } catch (java.io.IOException ex) { android.util.Log.e("Uncharted", "Controller bridge",ex); }
     }
 
     /** 某模拟半轴是否被用户映射(含方向);映射后其默认语义(如 HAT 方向 token)被替换。 */

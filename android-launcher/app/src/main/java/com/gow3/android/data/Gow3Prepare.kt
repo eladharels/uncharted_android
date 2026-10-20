@@ -23,7 +23,7 @@ import java.io.File
  * the selected folder.
  */
 object Gow3Prepare {
-    private const val TAG = "God of War III"
+    private const val TAG = "Uncharted"
     private const val BASE_DMEM_MB = 7104 // the same base run-gow3.sh passes on Android
 
     /** link_modules.py's DEFAULT_MODULES. libc.prx first: it becomes module id 2. */

@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gow3.android.R
 
-/** 将 launcher 的 God of War III 运行时日志（例如 android-game.log）导出为 zip。 */
+/** 将 launcher 的 Uncharted 运行时日志（例如 android-game.log）导出为 zip。 */
 @Composable
 internal fun LogCard(
     hasLogs: Boolean,

@@ -10,7 +10,7 @@ import java.net.URL
 import org.json.JSONObject
 
 /**
- * Android 发布的版本串：God of War III 的 PC 上游版本号（点分数字）加发布序号。
+ * Android 发布的版本串：Uncharted 的 PC 上游版本号（点分数字）加发布序号。
  *
  * GitHub 上表现为 tag，APK 内表现为去掉 `v` 的同一串 `versionName`
  * （`tools/android/release_local.sh` 的 `version=${android_tag#v}`）。序号由

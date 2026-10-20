@@ -81,7 +81,7 @@ final class SaveDialogBridge {
                     show(type,titles,subs,dates);
                 }
             } catch (Exception ex) {
-                android.util.Log.e("God of War III","save list request: "+ex);
+                android.util.Log.e("Uncharted","save list request: "+ex);
                 request.delete();
                 answered.set(false);
                 answer(false,-1); /* 解析失败也回 cancel，不能把运行时挂在应答上 */
@@ -191,11 +191,11 @@ final class SaveDialogBridge {
         try (java.io.Writer w=new java.io.OutputStreamWriter(new java.io.FileOutputStream(temporary),"UTF-8")) {
             w.write(ok ? "ok "+index+"\n" : "cancel\n");
             wrote=temporary.renameTo(result);
-        } catch (Exception ex) { android.util.Log.e("God of War III","save answer: "+ex); }
+        } catch (Exception ex) { android.util.Log.e("Uncharted","save answer: "+ex); }
         if (!wrote) {
             /* 写失败也 dismiss：不能让对话框卡死（CAS 已置位，再点 Cancel 也会被挡）。
              * 运行时由 save_list_timeout 兜底，不会永久等。 */
-            android.util.Log.e("God of War III","save answer: write/rename failed");
+            android.util.Log.e("Uncharted","save answer: write/rename failed");
             answered.set(false);
             if (dialog!=null) dialog.dismiss();
             return;

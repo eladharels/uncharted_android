@@ -4,7 +4,7 @@
     <string name="app_name">Uncharted Collection</string>
 
     <!-- 品牌与关键动作按钮：双语同值，不翻译 -->
-    <string name="title_god_of_war_iii">GOD OF WAR III</string>
+    <string name="title_god_of_war_iii">UNCHARTED</string>
     <string name="title_remastered">REMASTERED</string>
     <string name="launch_button">LAUNCH</string>
     <string name="start_game_button">START GAME</string>
@@ -223,9 +223,9 @@
     <string name="frame_gen_toggle_on">On</string>
 
     <!-- About 页 -->
-    <string name="about_title">God of War III for Android</string>
+    <string name="about_title">Uncharted: The Nathan Drake Collection for Android</string>
     <string name="about_version_fmt">Version %1$s</string>
-    <string name="about_description">A community launcher bringing the God of War III Remastered experience to Android via emulation.</string>
+    <string name="about_description">An unofficial, community launcher for the native Android port of the Nathan Drake Collection (Uncharted 1, 2 and 3). Bring your own PS4 dump.</string>
     <string name="about_third_party_licenses">Third-party licenses</string>
     <string name="update_check_title">Check for updates</string>
     <string name="update_check_action">CHECK</string>
@@ -249,7 +249,7 @@
     <string name="save_data_title">SAVE DATA</string>
     <string name="saves_found">Saves found</string>
     <string name="no_saves_yet">No saves yet</string>
-    <string name="save_data_description">Back up your God of War III saves to a .zip file, or restore a backup. The game\'s savedata lives in the app\'s private folder.</string>
+    <string name="save_data_description">Back up your Uncharted saves to a .zip file, or restore a backup. The game\'s savedata lives in the app\'s private folder.</string>
     <string name="save_export">EXPORT SAVE</string>
     <string name="save_import">IMPORT SAVE</string>
     <string name="save_import_footer">Importing replaces the current saves, but the existing ones are backed up first into the app\'s private folder.</string>
@@ -258,7 +258,7 @@
     <string name="log_runtime_logs">RUNTIME LOGS</string>
     <string name="logs_found">Logs found</string>
     <string name="no_logs_yet">No logs yet</string>
-    <string name="log_description">Export the God of War III runtime logs to a .zip file for troubleshooting. The game\'s log (android-game.log) lives in the app\'s private folder.</string>
+    <string name="log_description">Export the Uncharted runtime logs to a .zip file for troubleshooting. The game\'s log (android-game.log) lives in the app\'s private folder.</string>
     <string name="log_export">EXPORT LOGS</string>
     <string name="log_export_footer">Exporting only reads the runtime log files; it never modifies them or grabs the system logcat.</string>
 
@@ -308,7 +308,7 @@
     <string name="save_archive_unsafe_path_fmt">The archive contains an unsafe path: %1$s</string>
     <string name="save_archive_duplicate_fmt">The archive contains a duplicate path: %1$s</string>
     <string name="save_archive_wrong_layout_fmt">The archive layout is not a savedata layout: %1$s</string>
-    <string name="save_archive_title_fmt">The archive title does not match God of War III (%2$s): %1$s</string>
+    <string name="save_archive_title_fmt">The archive title does not match this game (%2$s): %1$s</string>
     <string name="lossless_no_readable_name">That file has no readable name.</string>
     <string name="lossless_wrong_file_fmt">That is not %1$s (selected: %2$s).</string>
     <string name="lossless_empty_fmt">%1$s is empty.</string>
@@ -317,9 +317,9 @@
 
     <!-- 游戏目录管理器 -->
     <string name="storage_permission_title">Storage permission required</string>
-    <string name="storage_permission_message">God of War III needs storage access to read the game folder.</string>
-    <string name="not_a_game_folder">Not a God of War III folder</string>
-    <string name="not_a_game_update_folder">Not a God of War III update folder</string>
+    <string name="storage_permission_message">Uncharted needs storage access to read the game folder.</string>
+    <string name="not_a_game_folder">Not an Uncharted collection folder</string>
+    <string name="not_a_game_update_folder">Not an Uncharted update folder</string>
     <string name="choose_again">Choose again</string>
     <string name="no_eboot">That location has no eboot.bin.</string>
     <string name="no_eboot_path_fmt">%1$s has no eboot.bin.</string>
@@ -329,7 +329,7 @@
     <string name="folder_title_game">Choose your game folder</string>
     <string name="folder_title_update">Choose the game update folder</string>
     <string name="folder_message_update">Optional: the update (patch) folder of the game, e.g. CUSA01740-patch. Its eboot.bin and sce_sys are laid over the game at start; the game files are never changed. Leave it empty to use the game folder as-is.</string>
-    <string name="folder_message_game">Select the extracted God of War III folder, such as CUSA01740, or its parent folder. The selected location must contain eboot.bin.</string>
+    <string name="folder_message_game">Select the extracted Nathan Drake Collection folder, such as CUSA02344, or its parent folder. It must contain eboot.bin, big2-ps4_Shipping.elf and big3-ps4_Shipping.elf.</string>
     <string name="folder_current_selection_fmt">\n\nCurrent selection:\n%1$s</string>
     <string name="folder_choose_update">CHOOSE UPDATE FOLDER</string>
     <string name="folder_choose_game">CHOOSE GAME FOLDER</string>

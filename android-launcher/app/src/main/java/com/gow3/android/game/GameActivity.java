@@ -41,7 +41,7 @@ import com.gow3.android.core.settings.GamePrefs;
 import com.gow3.android.core.settings.Gow3Settings;
 import com.gow3.android.Gow3App;
 
-/** God of War III-only Android player. Keeps the game surface alive beneath its sliding drawer. */
+/** Uncharted-only Android player. Keeps the game surface alive beneath its sliding drawer. */
 public final class GameActivity extends Activity implements SaveDialogHost {
     /** The app's files (application id com.gow3.android.bionic) and its gow3port runtime tree.
      *  Rootfs programs are launched through the in-tree loader when their PT_INTERP slot cannot
@@ -212,7 +212,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
             // input bridge.
             return true;
         });
-        status=text("Starting God of War III…",18,0xffc6ad76); status.setGravity(Gravity.CENTER);
+        status=text("Starting Uncharted…",18,0xffc6ad76); status.setGravity(Gravity.CENTER);
         screen.addView(status,frame(-1,-1,Gravity.CENTER));
         status.setClickable(false);
 
@@ -273,7 +273,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
         });
          */
         menuItem("ic_refresh","Restart game","Unsaved progress is lost",() -> new AlertDialog.Builder(this)
-            .setTitle("Restart God of War III?").setMessage("Any unsaved progress will be lost.")
+            .setTitle("Restart Uncharted?").setMessage("Any unsaved progress will be lost.")
             .setNegativeButton("Cancel",null).setPositiveButton("Restart",(dialog,which) -> restartGame()).show());
 
         section("Graphics");
@@ -330,14 +330,14 @@ public final class GameActivity extends Activity implements SaveDialogHost {
         });
 
         menuItem("ic_exit","Quit game",null,() -> new AlertDialog.Builder(this)
-            .setTitle("Quit God of War III?").setMessage("Any unsaved progress will be lost.")
+            .setTitle("Quit Uncharted?").setMessage("Any unsaved progress will be lost.")
             .setNegativeButton("Cancel",null).setPositiveButton("Quit",(dialog,which) -> finish()).show());
 
         // The version, pinned under the scrolling menu.
         String version="";
         try { version=" "+getPackageManager().getPackageInfo(getPackageName(),0).versionName; }
         catch (Exception ignored) {}
-        TextView about=text("God of War III for Android"+version,12,0xff8e9097);
+        TextView about=text("Uncharted for Android"+version,12,0xff8e9097);
         about.setPadding(dp(24),dp(8),dp(14),dp(14));
         drawer.addView(about,new LinearLayout.LayoutParams(-1,-2));
         screen.addView(drawer,frame(dp(320),-1,Gravity.LEFT));
@@ -345,7 +345,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
     }
 
     private void restartGame() {
-        closeDrawer(); status.setText("Restarting God of War III…"); status.setVisibility(View.VISIBLE);
+        closeDrawer(); status.setText("Restarting Uncharted…"); status.setVisibility(View.VISIBLE);
         worker.execute(() -> { stopGame(); startGame(); });
     }
 
@@ -596,7 +596,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
     private void startX(SurfaceHolder holder) {
         try {
             boolean installed=RuntimeInstaller.ensure(this, new File(FILES), message -> main.post(() -> status.setText(message)));
-            android.util.Log.i("God of War III","runtime installed="+installed);
+            android.util.Log.i("Uncharted","runtime installed="+installed);
             if (audio!=null) audio.start();
             if (audio==null || !audio.awaitReady(5000))
                 throw new java.io.IOException("Android audio bridge did not become ready; see logcat for details.");
@@ -621,7 +621,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
         // display_stretch 三档：0=等比适配（黑边），1=拉伸铺满（变形），2=裁切铺满（等比覆盖裁切溢出）。
         int mode = displayMode();
         String result = Gow3Present.start(holder, presentSocket(), mode);
-        android.util.Log.i("God of War III",result);
+        android.util.Log.i("Uncharted",result);
         if (!result.startsWith("bridge running:")) { error(result); return; }
         shmid=1; // present 已连接
         startingX=false; // 启动流程走完，之后的 surface 重建都走纯重连
@@ -648,10 +648,10 @@ public final class GameActivity extends Activity implements SaveDialogHost {
                 android.Manifest.permission.WRITE_EXTERNAL_STORAGE},REQUEST_STORAGE);
             return;
         }
-        status.setText(change ? "Choose the God of War III game folder." :
-            "Choose your God of War III game folder (e.g. CUSA01740, the folder with eboot.bin).");
+        status.setText(change ? "Choose the Uncharted game folder." :
+            "Choose your Uncharted game folder (e.g. CUSA02344, the folder with eboot.bin and the big2/big3 executables).");
         status.setVisibility(View.VISIBLE);
-        new AlertDialog.Builder(this).setTitle("God of War III game folder")
+        new AlertDialog.Builder(this).setTitle("Uncharted game folder")
             .setMessage("Select the extracted game folder (e.g. CUSA01740 or CUSA00900, which contains eboot.bin) or the folder "
                 +"that holds it, in your phone's storage."+(gameDir!=null ? "\n\nCurrent: "+gameDir : ""))
             .setPositiveButton("Choose folder",(d,w) -> {
@@ -667,7 +667,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
         if (code!=REQUEST_STORAGE) return;
         if (results.length>0 && results[0]==android.content.pm.PackageManager.PERMISSION_GRANTED) {
             if (hasGame()) startPending(); else askGameFolder(false);
-        } else error("God of War III needs storage access to read the game folder.");
+        } else error("Uncharted needs storage access to read the game folder.");
     }
     @Override protected void onActivityResult(int code,int result,Intent data) {
         super.onActivityResult(code,result,data);
@@ -677,7 +677,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
         if (dir!=null && !isGame(dir))
             for (String serial : SERIALS) if (isGame(new File(dir,serial))) { dir=new File(dir,serial); break; }
         if (!isGame(dir)) {
-            new AlertDialog.Builder(this).setTitle("Not a God of War III folder")
+            new AlertDialog.Builder(this).setTitle("Not an Uncharted collection folder")
                 .setMessage((dir==null ? "That location" : dir.getPath())+" has no eboot.bin.")
                 .setPositiveButton("Choose again",(d,w) -> askGameFolder(gameDir!=null)).show();
             return;
@@ -685,7 +685,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
         boolean changed=gameDir!=null && !gameDir.equals(dir.getPath());
         gameDir=dir.getPath();
         prefs.setGameDir(gameDir);
-        status.setText("Starting God of War III…");
+        status.setText("Starting Uncharted…");
         if (changed && game!=null) restartGame(); else startPending();
     }
     /** A storage folder of the picker (tree document "primary:Path" or "XXXX-XXXX:Path") as a path. */
@@ -731,7 +731,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
                 String title=r.readLine(), initial=r.readLine();
                 request.delete();
                 showIme(Math.max(1,max),title==null ? "" : title,initial==null ? "" : initial);
-            } catch (Exception ex) { android.util.Log.e("God of War III","text request: "+ex); request.delete(); }
+            } catch (Exception ex) { android.util.Log.e("Uncharted","text request: "+ex); request.delete(); }
         }
         main.postDelayed(this::pollIme,250);
     }
@@ -778,8 +778,8 @@ public final class GameActivity extends Activity implements SaveDialogHost {
         File temporary=new File(BASE,"ime.request.result.tmp"), result=new File(BASE,"ime.request.result");
         try (java.io.Writer w=new java.io.OutputStreamWriter(new java.io.FileOutputStream(temporary),"UTF-8")) {
             w.write((ok ? "ok" : "cancel")+"\n"+value.replace('\n',' ')+"\n");
-        } catch (Exception ex) { android.util.Log.e("God of War III","text answer: "+ex); return; }
-        if (!temporary.renameTo(result)) android.util.Log.e("God of War III","text answer: rename failed");
+        } catch (Exception ex) { android.util.Log.e("Uncharted","text answer: "+ex); return; }
+        if (!temporary.renameTo(result)) android.util.Log.e("Uncharted","text answer: rename failed");
     }
     /** launcher 的 gow3.ini（游戏、run-bionic.sh、游戏内对话框读的同一份文件）。 */
     private File configIni() { return new File(DATA,"gow3.ini"); }
@@ -847,7 +847,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
             java.util.Map<String,String> ini=Gow3Settings.read(configIni());
             com.gow3.android.data.Gow3Prepare.Result result=
                     com.gow3.android.data.Gow3Prepare.INSTANCE.prepare(this,game,update,catalog,ini);
-            android.util.Log.i("God of War III",
+            android.util.Log.i("Uncharted",
                     "bionic prepare: "+result.getReason()+"; applied="+result.getApplied()
                             +"; writes="+result.getWriteCount()+"; dmem="+result.getDmemMb()
                             +"; vblank="+result.getVblankHz());
@@ -860,11 +860,11 @@ public final class GameActivity extends Activity implements SaveDialogHost {
             error("This game's patch set is not available: "+ex.getProblem());
             return false;
         } catch (java.io.IOException ex) {
-            android.util.Log.e("God of War III","bionic prepare: cannot read the patch catalogue",ex);
+            android.util.Log.e("Uncharted","bionic prepare: cannot read the patch catalogue",ex);
             error("Game preparation failed: "+ex);
             return false;
         } catch (Exception ex) {
-            android.util.Log.e("God of War III","bionic prepare failed",ex);
+            android.util.Log.e("Uncharted","bionic prepare failed",ex);
             error("Game preparation failed: "+ex);
             return false;
         }
@@ -894,7 +894,7 @@ public final class GameActivity extends Activity implements SaveDialogHost {
         if (gameLog.isFile()) {
             if (previous.exists()) previous.delete();
             if (!gameLog.renameTo(previous))
-                android.util.Log.w("God of War III","log rotation: could not rename android-game.log to android-game.prev.log");
+                android.util.Log.w("Uncharted","log rotation: could not rename android-game.log to android-game.prev.log");
         }
         try {
             // /system/bin/sh pulls run-bionic.sh directly (toybox): no rootfs loader, no X11.
@@ -919,12 +919,12 @@ public final class GameActivity extends Activity implements SaveDialogHost {
                     // interrupted then, after the next game started. Only the current game's errors show.
                     if (!destroyed && game==launched) error(ex.toString());
                 }
-            },"God of War III-log"); log.setDaemon(true); log.start();
+            },"Uncharted-log"); log.setDaemon(true); log.start();
         } catch (Exception ex) { error(ex.toString()); }
     }
     private void error(String message) {
         hadError=true;
-        android.util.Log.e("God of War III",message);
+        android.util.Log.e("Uncharted",message);
         main.post(() -> { if (!destroyed) { status.setText(message); status.setVisibility(View.VISIBLE); } });
     }
     private void stopGame() {

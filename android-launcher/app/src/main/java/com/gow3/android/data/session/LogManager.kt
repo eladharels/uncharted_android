@@ -28,7 +28,7 @@ internal sealed class LogResult {
 }
 
 /**
- * 负责 God of War III 运行时日志：把维护者诊断 zip（`report.txt` 设备清单、`android-game.log`
+ * 负责 Uncharted 运行时日志：把维护者诊断 zip（`report.txt` 设备清单、`android-game.log`
  * 与 `android-game.prev.log` 尾段、`gow3.ini` 设置（去敏感键）、本应用 uid 的 `logcat.txt`）
  * 导出为玩家通过 Storage Access Framework 选择的 `.zip`。参考 Bloodborne-Android 的 LogReport
  * 内容模型；只读取 `filesDir/gow3data` 下的日志/设置与只读系统信息，运行时、runtime 安装、
@@ -39,7 +39,7 @@ internal class LogManager(private val activity: Activity) {
     companion object {
         /** 区别于 GameFolderManager 的 1001/1002、LosslessDllManager 的 1003 和 SaveManager 的 1004/1005。 */
         const val REQUEST_EXPORT = 1006
-        private const val DEFAULT_EXPORT_NAME = "GodOfWar3-Logs"
+        private const val DEFAULT_EXPORT_NAME = "Uncharted-Logs"
     }
 
     /** 由 [launchExport] 设置，由 [onActivityResult] 消费。 */

@@ -23,7 +23,7 @@ internal sealed class SaveResult {
 }
 
 /**
- * 负责 God of War III 存档：将 `savedata/` 目录树导出为玩家通过 Storage Access
+ * 负责 Uncharted 存档：将 `savedata/` 目录树导出为玩家通过 Storage Access
  * Framework 选择的 `.zip`，并在校验、安全备份和原子替换后导入此类归档。
  * 只触及 `filesDir/gow3data/user/savedata` 及其 `savedata_backups`；
  * 运行时、gow3.ini、运行时安装和游戏文件绝不被修改。
@@ -34,7 +34,7 @@ internal class SaveManager(private val activity: Activity) {
         /** 区别于 GameFolderManager 的 1001/1002 和 LosslessDllManager 的 1003。 */
         const val REQUEST_EXPORT = 1004
         const val REQUEST_IMPORT = 1005
-        private const val DEFAULT_EXPORT_NAME = "GodOfWar3-Saves"
+        private const val DEFAULT_EXPORT_NAME = "Uncharted-Saves"
     }
 
     /** 由 [launchExport]/[launchImport] 设置，由 [onActivityResult] 消费。 */

@@ -37,7 +37,7 @@ final class AudioBridge {
         state=0;
         running=true;
         wantPlay=true;
-        Thread thread=new Thread(this::run,"God of War III-audio");
+        Thread thread=new Thread(this::run,"Uncharted-audio");
         thread.setPriority(Thread.MAX_PRIORITY); thread.setDaemon(true); thread.start();
     }
     void stop() {
@@ -64,7 +64,7 @@ final class AudioBridge {
     }
 
     private void run() {
-        android.util.Log.i("God of War III","audio bridge started");
+        android.util.Log.i("Uncharted","audio bridge started");
         while (running) {
             AudioTrack active=null;
             RandomAccessFile pipe=null;
@@ -104,7 +104,7 @@ final class AudioBridge {
                     if (!ready.createNewFile())
                         throw new IOException("audio ready marker could not be created");
                     state=1;
-                    android.util.Log.i("God of War III","audio: ready (48 kHz, s16 stereo)");
+                    android.util.Log.i("Uncharted","audio: ready (48 kHz, s16 stereo)");
 
                     byte[] buffer=new byte[4096];
                     int carry=0;
@@ -123,7 +123,7 @@ final class AudioBridge {
                                 if (wantPlay && t.getPlayState()!=AudioTrack.PLAYSTATE_PLAYING)
                                     try { t.play(); } catch (Exception ignored) {}
                                 if (++stallLogCounter%200==1)
-                                    android.util.Log.d("God of War III","audio: write returned 0 (paused/stalled)");
+                                    android.util.Log.d("Uncharted","audio: write returned 0 (paused/stalled)");
                                 Thread.sleep(5);
                                 continue;
                             }
@@ -139,7 +139,7 @@ final class AudioBridge {
                 }
             } catch (Exception ex) {
                 if (!running) break;
-                android.util.Log.w("God of War III","audio bridge reinitializing: "+ex.getClass().getSimpleName()+": "+ex.getMessage());
+                android.util.Log.w("Uncharted","audio bridge reinitializing: "+ex.getClass().getSimpleName()+": "+ex.getMessage());
             } finally {
                 if (active!=null) {
                     try { active.stop(); } catch (Exception ignored) {}
@@ -156,7 +156,7 @@ final class AudioBridge {
             if (!running) break;
             try { Thread.sleep(REINIT_BACKOFF_MS); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
         }
-        android.util.Log.i("God of War III","audio bridge stopped");
+        android.util.Log.i("Uncharted","audio bridge stopped");
     }
     private static boolean isFifo(File file) {
         try { return OsConstants.S_ISFIFO(Os.stat(file.getPath()).st_mode); } catch (Exception e) { return false; }

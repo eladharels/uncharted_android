@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- debug 变体的桌面名称覆盖：与 release（com.gow3.android.bionic）并存时一眼可辨。 -->
+<!-- debug 变体的桌面名称覆盖：与 release（com.uncharted.android）并存时一眼可辨。 -->
 <resources>
-    <string name="app_name">God of War III Debug</string>
+    <string name="app_name">Uncharted Debug</string>
 </resources>

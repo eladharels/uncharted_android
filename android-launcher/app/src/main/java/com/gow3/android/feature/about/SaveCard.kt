@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gow3.android.R
 
-/** 将玩家的 God of War III 存档备份为 zip，并在带安全备份的情况下恢复一个备份。 */
+/** 将玩家的 Uncharted 存档备份为 zip，并在带安全备份的情况下恢复一个备份。 */
 @Composable
 internal fun SaveCard(
     hasSaves: Boolean,

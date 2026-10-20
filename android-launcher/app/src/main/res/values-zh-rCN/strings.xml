@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">God of War III</string>
+    <string name="app_name">Uncharted Collection</string>
 
     <!-- 品牌与关键动作按钮：双语同值，不翻译 -->
-    <string name="title_god_of_war_iii">GOD OF WAR III</string>
+    <string name="title_god_of_war_iii">UNCHARTED</string>
     <string name="title_remastered">REMASTERED</string>
     <string name="launch_button">LAUNCH</string>
     <string name="start_game_button">START GAME</string>
@@ -206,9 +206,9 @@
     <string name="frame_gen_toggle_on">开启</string>
 
     <!-- About 页 -->
-    <string name="about_title">God of War III Android</string>
+    <string name="about_title">神秘海域：德雷克船长合集 Android</string>
     <string name="about_version_fmt">版本 %1$s</string>
-    <string name="about_description">一个通过模拟将《战神 III 重制版》体验带到 Android 的社区启动器。</string>
+    <string name="about_description">《神秘海域：德雷克船长合集》（神秘海域 1、2、3）原生 Android 移植的非官方社区启动器。需要你自己的 PS4 游戏转储。</string>
     <string name="about_third_party_licenses">第三方许可</string>
     <string name="update_check_title">检测更新</string>
     <string name="update_check_action">检查</string>
@@ -232,7 +232,7 @@
     <string name="save_data_title">存档数据</string>
     <string name="saves_found">发现存档</string>
     <string name="no_saves_yet">暂无存档</string>
-    <string name="save_data_description">将你的《战神 III》存档备份为 .zip 文件，或恢复某个备份。游戏存档保存在应用私有目录内。</string>
+    <string name="save_data_description">将你的《神秘海域》存档备份为 .zip 文件，或恢复某个备份。游戏存档保存在应用私有目录内。</string>
     <string name="save_export">导出存档</string>
     <string name="save_import">导入存档</string>
     <string name="save_import_footer">导入会替换当前存档，但已有存档会先备份到应用私有目录内。</string>
@@ -241,7 +241,7 @@
     <string name="log_runtime_logs">运行时日志</string>
     <string name="logs_found">发现日志</string>
     <string name="no_logs_yet">暂无日志</string>
-    <string name="log_description">将《战神 III》运行时日志导出为 .zip 文件用于排查问题。游戏日志（android-game.log）保存在应用私有目录内。</string>
+    <string name="log_description">将《神秘海域》运行时日志导出为 .zip 文件用于排查问题。游戏日志（android-game.log）保存在应用私有目录内。</string>
     <string name="log_export">导出日志</string>
     <string name="log_export_footer">导出只读取运行时日志文件，绝不会修改它们或抓取系统 logcat。</string>
 
@@ -291,7 +291,7 @@
     <string name="save_archive_unsafe_path_fmt">归档包含非法路径：%1$s</string>
     <string name="save_archive_duplicate_fmt">归档包含重复路径：%1$s</string>
     <string name="save_archive_wrong_layout_fmt">归档结构不是存档布局：%1$s</string>
-    <string name="save_archive_title_fmt">归档标题与 God of War III（%2$s）不匹配：%1$s</string>
+    <string name="save_archive_title_fmt">归档标题与本游戏（%2$s）不匹配：%1$s</string>
     <string name="lossless_no_readable_name">该文件没有可读的文件名。</string>
     <string name="lossless_wrong_file_fmt">这不是 %1$s（所选：%2$s）。</string>
     <string name="lossless_empty_fmt">%1$s 是空文件。</string>
@@ -300,9 +300,9 @@
 
     <!-- 游戏目录管理器 -->
     <string name="storage_permission_title">需要存储权限</string>
-    <string name="storage_permission_message">《战神 III》需要存储权限以读取游戏目录。</string>
-    <string name="not_a_game_folder">不是《战神 III》的目录</string>
-    <string name="not_a_game_update_folder">不是《战神 III》的升级补丁目录</string>
+    <string name="storage_permission_message">《神秘海域》需要存储权限以读取游戏目录。</string>
+    <string name="not_a_game_folder">不是《神秘海域》的目录</string>
+    <string name="not_a_game_update_folder">不是《神秘海域》的升级补丁目录</string>
     <string name="choose_again">重新选择</string>
     <string name="no_eboot">该位置没有 eboot.bin。</string>
     <string name="no_eboot_path_fmt">%1$s 没有 eboot.bin。</string>
@@ -312,7 +312,7 @@
     <string name="folder_title_game">选择你的游戏目录</string>
     <string name="folder_title_update">选择游戏升级补丁目录</string>
     <string name="folder_message_update">可选：游戏的升级（补丁）目录，例如 CUSA01740-patch。启动时它的 eboot.bin 与 sce_sys 会叠加到游戏上；游戏文件不会被改动。留空则使用游戏目录原样。</string>
-    <string name="folder_message_game">选择解压后的《战神 III》目录（例如 CUSA01740）或其父目录。所选位置必须包含 eboot.bin。</string>
+    <string name="folder_message_game">选择解压后的《神秘海域：德雷克船长合集》目录（例如 CUSA02344）或其父目录。所选位置必须包含 eboot.bin、big2-ps4_Shipping.elf 和 big3-ps4_Shipping.elf。</string>
     <string name="folder_current_selection_fmt">\n\n当前选择：\n%1$s</string>
     <string name="folder_choose_update">选择升级补丁目录</string>
     <string name="folder_choose_game">选择游戏目录</string>
