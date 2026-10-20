@@ -1,240 +1,137 @@
-# Uncharted: The Nathan Drake Collection for PC (native port)
+# Uncharted: The Nathan Drake Collection — Android
 
-**English** | [Português (Brasil)](README.pt-BR.md)
+An unofficial, native Android port of **Uncharted 1, 2 and 3** from *Uncharted: The Nathan Drake
+Collection* (PS4). It runs your own PS4 dump on an Android phone with an Adreno GPU, with no PS4
+emulator: the game's original x86-64 code runs in a JIT, and everything around it (the PS4 system
+runtime, the shadPS4-based renderer, audio, input) is native ARM64 code.
 
-A native Windows 10 and 11 port of the games in **Uncharted: The Nathan Drake Collection** (PS4,
-Bluepoint, 2015). The focus is **Uncharted 3: Drake's Deception**, playable from start to end at 60 FPS in 1080p with no upscaling or frame generation;
-Uncharted 2 is playable and Uncharted 1 runs (experimental).
-
-> **No game files are included.** You need a dump from your own PS4
-> (tested: **CUSA02344**, version 01.00 with the **01.02** update).
-> This project is not affiliated with Sony Interactive Entertainment, Naughty Dog or Bluepoint
-> Games. Uncharted is a trademark of Sony Interactive Entertainment.
-
-## Download and play
-
-No install and no terminal needed:
-
-1. Download the latest `ucndc_pc-v…-windows.zip` from [Releases](https://github.com/zorde23/Uncharted_Collection_PC/releases) and extract it anywhere
-   (for example `C:\Games\ucndc_pc`). Don't run it from inside the zip.
-2. Open **`Uncharted Launcher.exe`**. If Windows SmartScreen warns about it, click
-   *More info* → *Run anyway* (the launcher is not signed).
-3. Pick the folder of your game dump (`CUSA02344`). The update folder (01.02) is found
-   automatically when it sits next to it.
-4. Click **Play** on the game you want. The launcher can also create desktop shortcuts.
-
-The **Options** button sets the display mode (window, borderless, fullscreen), VSync, the FPS
-limit and the FPS counter. Under *Advanced* you can turn off any of the optimizations; with all of
-them on you get the tested setup. In game, **Insert** or **F1** (or L2+R2+L3+R3 on a controller) opens the port's
-menu. Saves are kept in the `user` folder next to the launcher, and the last session's log in
-`user\last_run.log`.
-
-The **Controls** button sets up keyboard and mouse: turn on *Look around with the mouse*, set the
-sensitivity (and a separate multiplier while aiming), and change any key or controller button. The
-same options are in the in-game menu (*Controls* tab). With mouse look on, the mouse turns the
-camera directly in all three games, while walking, aiming and in cover; hold Left Alt to free the
-cursor. Default keys: WASD move, Space Cross, Left Ctrl or Q Circle, F Square, E Triangle, G L1,
-R R1, right mouse button L2 (aim), left mouse button R2 (shoot), V L3, middle mouse button R3,
-1/2/3/4 or the wheel the d-pad, Tab the touchpad, Esc or Enter Options.
-
-You need 64-bit Windows 10 (1903+) or 11 and a GPU with Vulkan 1.3. The port was developed on an
-AMD RX 6750 XT; Intel GPUs get a fix from Supermedo but are still untested.
-
-## How it works
-
-The PS4 uses an x86-64 processor, the same architecture as a PC, so the game's original executable
-runs **directly on the CPU**, with no emulation: a runtime written for the port replaces the PS4
-system libraries (memory, threads, files, audio, video, controller, saves). The graphics are
-translated: the PS4 GPU (AMD GCN) commands and shaders become Vulkan through the
-[shadPS4](https://github.com/shadps4-emu/shadPS4) video core.
-
-This repository is a fork of the [God of War III port](https://github.com/FelipePrado0/gow3_pc),
-which comes from Supermedo's [Bloodborne Windows port](https://github.com/Supermedo/bloodborne_pc)
-and deadinside28's original [bloodborne_pc](https://github.com/deadinside28/bloodborne_pc). What the player
-sees is already named after this port (`ucndc.exe`, `ucndc.ini`, `UC_*` options); inside the code
-many names still start with `gow3` / `GOW3_`, and the old names still work.
-
-## Why this project
-
-The original idea was to port only **Uncharted 3**, the one game in the trilogy I had never played and also the one
-shadPS4 has the most trouble running.
-Since the three games in the collection share the same engine and the same dump, Uncharted 2 and
-Uncharted 1 came later almost for free, and the goal is now the whole trilogy.
+> **No game files are included.** You need a dump of the collection from a PS4 you own.
+> This project is not affiliated with, endorsed by or connected to Sony Interactive
+> Entertainment or Naughty Dog. *Uncharted* and *PlayStation* are their trademarks.
 
 ## Status
 
-Updated 2026-10-20.
-
-| Game | Executable | Status |
+| Game | Executable | Android |
 |---|---|---|
-| Uncharted 1 | `eboot.bin` | Runs at **60 FPS** with sound (gunshots included); lightly tested past the start |
-| Uncharted 2 | `big2-ps4_Shipping.elf` | Playable, 51–60 FPS, with its own saves |
-| Uncharted 3 | `big3-ps4_Shipping.elf` | **100% playable from start to end**, at **60 FPS in 1080p, with no upscaling or frame generation**. Some parts still need optimization and drop below 60 (around 50 in heavy vegetation, the Chateau), always staying above 30 FPS. One crash in the whole playthrough, not reproduced or fixed yet. Known issues listed below |
+| Uncharted: Drake's Fortune | `eboot.bin` | Playable |
+| Uncharted 2: Among Thieves | `big2-ps4_Shipping.elf` | Playable |
+| Uncharted 3: Drake's Deception | `big3-ps4_Shipping.elf` | Playable |
 
-New in 0.3.4:
-- **1440p and 4K** in all three games (launcher, Options > Resolution). The games render natively at the chosen size (no upscaling), and the intro videos are scaled to fill the screen. **Not fully tested yet**: tried in short sessions of each game, not through a whole game. Above 1080p the GPU works harder and the game uses more video memory (4K: about 8 GB of game memory). On a 4K monitor, "Borderless" fills the screen with the same FPS as a window.
-- UC3: the light cones' fog no longer shows black wedges and white specks, and walls and lights no longer flash where shadow maps are rebuilt (on by default in the launcher).
-- UC3: Drake's scarf no longer jumps around in the desert.
+Tested on a Samsung Galaxy S24 Ultra (Snapdragon 8 Gen 3, Adreno 750, Android 16 / One UI) with
+dump CUSA02344 v01.00, the Mesa Turnip driver `v27.0.0-20261020-r4-8G2-OneUI`, a 30 FPS limit.
+Other Adreno phones should work but have not been tried; Mali and other non-Adreno GPUs are not
+supported (the port relies on Turnip). Reports from other devices are welcome (see
+[Reporting a problem](#reporting-a-problem)).
 
-Fixed in UC3 earlier: young Drake's white hair (addr64 `BUFFER_LOAD`), swapped
-textures (bartender's vest, museum floor, bathroom door) and performance, which went from 18–24 FPS
-in the streets and the Chateau to 60.
+## What you need
 
-New in 0.3.2: keyboard and mouse controls with direct mouse camera in UC1, UC2 and UC3 (also on the
-1.00 game without the update), a Controls window in the launcher and a Controls tab in the in-game
-menu, F1 as a second key for the menu, and a notice in the launcher when a new version is out.
+- An **arm64 Android phone with an Adreno GPU** (Snapdragon). Android 9 or newer; a recent
+  flagship (Snapdragon 8 Gen 2 or newer) is recommended. About 8 GB of RAM or more.
+- **Your own dump** of *Uncharted: The Nathan Drake Collection*, extracted to a folder that holds
+  `eboot.bin`, `big2-ps4_Shipping.elf`, `big3-ps4_Shipping.elf`, `sce_sys/` and `sce_module/`
+  (and the `u1data`, `u2data`, `u3data` folders). The PC port was developed with CUSA02344
+  v01.02; v01.00 also runs. If you have the 01.02 update, merge it into the base folder.
+- About 50 GB of free storage for the dump.
 
-Also new: the player package with the launcher and its Options screen; the port's in-game menu no
-longer shows God of War III-only items (cheats, orbs, upscaler, render resolution) in the Uncharted
-games; and black screen on Intel GPUs fixed (from Supermedo's 0.3.3, untested here).
+## Install and play
 
-Known issues:
-**Uncharted 3**
-- **One crash in a full playthrough, not fixed yet.** It could not be reproduced. A likely cause is a GPU driver timeout after long sessions: the port can send a very large block of memory (~1.5 GB) to the GPU in one go, the frame stalls and Windows/AMD closes the game. Save often.
-- **Short dips in 1% low FPS where shadow maps are rebuilt.** A shadow map array is rebuilt one layer at a time instead of reused (frames of 25-50 ms). The dark flash on walls and the flickering lights these rebuilds caused are fixed (`UC_DEPTH_KEEP_CLEAR`). Seen in The Citadel (chapter at 37%).
-- **Brief texture flicker the first time you enter a new area.** New shaders are compiled in the background, and objects using them are skipped for a few frames. Shaders are cached, so it does not repeat on later visits.
-- **Some parts still need optimization.** FPS drops below 60 in a few places (heavy vegetation such as The Chateau runs around 50), always above 30. The limit is the emulated GPU command processor on the CPU.
-- The game is locked to 60 FPS. Higher frame rates speed up the game logic.
-- Upscaling (FSR/DLSS) does not work for Uncharted: the inherited hooks are specific to God of War III. 1440p and 4K render natively instead (see above).
-- **1440p and 4K are not fully tested yet** (all three games): only short sessions so far. If a game crashes or looks wrong above 1080p, go back to 1920x1080 in Options and please report it.
+1. Download the APK from the [Releases](../../releases) page (or a CI build, see
+   [Building](#building)) and install it. Android may ask you to allow installs from this source.
+2. Copy your dump to the phone, for example to
+   `/storage/emulated/0/games/Uncharted The Nathan Drake Collection/Game`.
+3. Open **Uncharted Collection**, grant storage access and pick that folder in
+   **Settings → General**. The home screen then shows the collection and your game's own
+   background art.
+4. **GPU driver:** in **Settings → Driver → Download drivers**, get a **Turnip** build for your
+   GPU and select it on the home screen. On the Galaxy S24 Ultra (Adreno 750) use
+   **Mesa Turnip `…-8G2-OneUI`** (not the `-Linux`, `-Wayland`, `A8xx` or `710-720` builds).
+   Samsung phones generally need a *OneUI* build. The phone's own driver is not supported.
+5. **Game:** pick **Uncharted 1, 2 or 3** on the home screen.
+6. Set the **FPS limit** to 30 to start with, then tap **LAUNCH**. The first start of each game
+   compiles shaders and takes longer.
 
-**Uncharted 2**
-- In the train prologue the carriage can fall too early, so you may need to jump sooner than on PS4. UC2 runs without `UC_COMPUTE_PIPE` for this reason. If the train still fails, turn off `UC_HLE_INORDER` and `UC_ACB_DISPATCH_PIPE` in the launcher (Options > Advanced) for that part; they keep the rooftop chase at 60 FPS.
-- Lightly tested. Please report missing sounds or visual bugs.
+Controls: on-screen buttons, or a Bluetooth/USB controller (map its buttons in
+**Settings → Controls**). The in-game menu (drawer) has save management, restart and quit.
 
-**Uncharted 1**
-- Lightly tested. Please report missing sounds or visual bugs.
+### Tips
 
-The project log (in Portuguese), with what was done and why, is in
-[docs/uc3/DEVLOG.md](docs/uc3/DEVLOG.md).
+- **30 FPS** is the sustainable setting on a phone; the games run at most at 60. A clip-on cooler
+  helps keep clocks up in long sessions.
+- If a game **freezes with sound still playing**, lower the FPS limit or resolution: the GPU is
+  overloaded.
+- **Black screen or corrupted colours:** make sure a Turnip driver is selected, then try another
+  Turnip build (Purple Turnip, K11MCH1) from the driver list.
+- The launcher keeps your settings in `gow3.ini` in the app's private folder; saves are exported
+  and imported from **About → Save data**.
 
-## How this differs from Supermedo's uncharted_pc
+### Reporting a problem
 
-Supermedo's [uncharted_pc](https://github.com/Supermedo/uncharted_pc) is another native port of the
-same collection, also GPL and from the same family (both descend from deadinside28's bloodborne_pc).
-The two were made in parallel, and this one took several of its fixes, always credited (see
-[Credits](#credits)). Compared with its version 0.3.1 (2026-10-15):
+Use **About → Export logs** in the app: it writes `Uncharted-Logs-<date>.zip` with the game
+log, the previous run's log, logcat and your settings. Open an issue with that file, your phone
+model, the driver you used and what you did.
 
-| | This port (ucndc_pc) | uncharted_pc (Supermedo) |
-|---|---|---|
-| Origin | Fork of the God of War III port (gow3_pc) | Direct fork of bloodborne_pc (bbport) |
-| Video core | shadPS4 0.19.0 with fixes from the 2026-10-12 nightly (memory tracker, texture cache) | shadPS4 from 2026-09-24 with recompiler backports |
-| GPU readbacks by the game | **Precise** mode (the scenery is drawn from the right data; this is what fixed the visual problems here), sped up to reach 60 FPS: async readbacks, side queue, early submits, ring copies on another thread | **Relaxed** mode by default, working around the problem with the scalar copy HLE |
-| How optimizations land | In the code, each one behind an option that is **off by default**, measured and logged in the [DEVLOG](docs/uc3/DEVLOG.md); the launcher turns on the tested set, and *Options → Advanced* turns them off one by one | On by default, with options to turn them off |
-| Other things this port has | Tight barriers on formatted buffers, full hash of small images, MP3 in Ajm, diagnostic tools (GPU profile, fault and write tracing), mouse turning the camera directly in all three games (walking, aiming and cover) | — |
-| What it has that this one does not yet | — | Upscalers and frame generation, 120 FPS option, collection menu through `eboot.bin` |
+## How it works
 
-The two projects help each other: when something works there and not here (or the other way round),
-comparing them is worth it.
+This repository merges two projects that share one history, both descended from deadinside28's
+*bloodborne_pc* via Felipe Prado's God of War III port:
 
-## Building from source
+- **zorde23/ucndc_pc** — the unofficial native PC port of the Nathan Drake Collection
+  (Windows): the game-specific runtime, the Uncharted fixes to the renderer and libSceFiber.
+- **zFitness/gow3_android** — the Android runtime of the God of War III port: FEXCore runs the
+  game's x86-64 code inside the app, the runtime and the shadPS4 video core are built for
+  Android (Bionic), Vulkan goes to a Turnip driver, and a Kotlin launcher prepares the game.
 
-Only needed to work on the port; to play, use the [download](#download-and-play).
+The work specific to this port is in [docs/ANDROID_PORT.md](docs/ANDROID_PORT.md). Most notably:
+Uncharted 3's job system runs on fibers, which the PC port switches with x86-64 assembly; on
+Android a fiber switch is done inside the JIT by replacing the guest registers when the host call
+returns (`guest_cpu_context_save/load`, `src/runtime_fiber_jit.c`).
 
+## Building
 
-1. Install MSYS2 (`winget install MSYS2.MSYS2`), open the **MSYS2 CLANG64** shell and install the
-   dependencies:
+The APK is built by GitHub Actions (`.github/workflows/android.yml`) on every push to `main`,
+`android-port` or a `v*` tag, and on demand (**Actions → android → Run workflow**). The signed
+APK is uploaded as the run's artifact; a `v*` tag also publishes a release.
 
-   ```bash
-   pacman -S --needed git patch \
-     mingw-w64-clang-x86_64-{toolchain,cmake,ninja,pkgconf,python} \
-     mingw-w64-clang-x86_64-{vulkan-headers,vulkan-loader,vulkan-memory-allocator,glslang} \
-     mingw-w64-clang-x86_64-{sdl3,fmt,boost,robin-map,xxhash,ffmpeg,zydis} \
-     mingw-w64-clang-x86_64-{spirv-tools,spirv-headers,spirv-cross}
-   ```
+The workflow signs with your own key, given as four repository secrets
+(**Settings → Secrets and variables → Actions**):
 
-2. Clone with submodules:
-
-   ```bash
-   git clone --recursive https://github.com/zorde23/Uncharted_Collection_PC.git
-   ```
-
-3. Edit `windows\config.bat` with the paths to MSYS2, the game and the update.
-4. Run `windows\compilar.bat` (or `bash build.sh` in the CLANG64 shell). The result is
-   `out\ucndc.exe`.
-5. Optional: `packaging\windows\empacotar.bat` builds the player zip (`dist\ucndc_pc-v<version>-windows.zip`)
-   with the launcher. It needs Python for Windows installed (python.org or `winget install Python.Python.3.13`).
-
-### Playing from source
-
-Double-click the game's `.bat` in `windows\`:
-
-| File | What it does |
+| Secret | Value |
 |---|---|
-| `config.bat` | Paths (MSYS2, game, update) and the recommended optimization list |
-| `compilar.bat` | Builds the port |
-| `jogar_uc3.bat` | Uncharted 3 with the optimizations (60 FPS) |
-| `jogar_uc2.bat` | Uncharted 2 (without `UC_COMPUTE_PIPE`, because of the train) |
-| `jogar_uc1.bat` | Uncharted 1 (experimental) |
-| `fechar_jogo.bat` | Closes the game if it hangs |
+| `ANDROID_KEYSTORE_BASE64` | the keystore file, base64 (`base64 -w0 my.keystore`) |
+| `ANDROID_KEYSTORE_PASSWORD` | the keystore password |
+| `ANDROID_KEY_ALIAS` | the key alias |
+| `ANDROID_KEY_PASSWORD` | the key password |
 
-Each session's log goes to `out\last-run.log` (the previous one to `out\previous-run.log`). Saves
-are kept in `user\`. In game, **Insert** or **F1** (or L2+R2+L3+R3 on a controller) opens the port's menu.
+Create a key once with
+`keytool -genkeypair -keystore my.keystore -alias uncharted -keyalg RSA -keysize 2048 -validity 10000`,
+keep the file safe and never commit it: an APK only installs over a previous one signed with the
+same key.
 
-You can also call the script directly and pass options for that run only:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File tools\run_uc3.ps1 -Set UC_READBACKS=1,UC_FRAME_STATS=1
-```
-
-### Options (toggles)
-
-Every new optimization goes in **off by default** in the code; the launcher and the `.bat` files in
-`windows\` turn on the tested set. Each one also works with the older `GOW3_` prefix
-(`UC_LEAF_COPY` = `GOW3_LEAF_COPY`; if both are set, `UC_` wins). The main ones:
-
-| Variable | Effect |
-|---|---|
-| `UC_READBACKS` | `2` (the `run_uc3.ps1` default): precise GPU readbacks, needed for the scenery to show; `1`: relaxed mode |
-| `UC_READBACK_ASYNC`, `UC_READBACK_FAST*`, `UC_READBACK_SIDEQ`, `UC_DEFERRED_READBACK` | GPU readbacks without draining the whole queue |
-| `UC_SCALAR_COPY_HLE`, `UC_HLE_INVALIDATE` | Replaces a copy compute shader with native code (and invalidates the caches it writes) |
-| `UC_COMPUTE_PIPE`, `UC_LEAF_COPY` | Compute processing shortcuts |
-| `UC_EAGER_SUBMIT*`, `UC_ASYNC_SUBMIT`, `UC_DEFERRED_SUBMIT` | Submit GPU work earlier / on another thread |
-| `UC_RING_COPY_THREAD`, `UC_RING_DEDUP` | Ring buffer copies on a separate thread, without repeats |
-| `UC_FRAME_STATS` | Frame statistics in the log |
-| `UC_EXECUTABLE` | Which game to start (`big3-ps4_Shipping.elf`, `big2-ps4_Shipping.elf`, `eboot.bin`) |
-| `UC_LOW_IMAGE` | Loads the executable below 2 GB (needed for Uncharted 1) |
-| `UC_AJM_END_RULES` | Ajm (audio decoder) end-of-job rules, from SuperMedo (Uncharted 1) |
-| `UC_EOP_TICK_WAIT` | The `m_gfxEopTick` assert waits for the GPU instead of stopping the game |
-| `UC_SYNC_SMALL_TARGETS` | Shaders for small render targets compile right away, so a one-time lighting table drawn at boot is not skipped (fixes the dark cave torch in UC3) |
-| `UC_JOB_SPIN`, `UC_JOB_SLEEP` | `UC_JOB_SPIN=100` + `UC_JOB_SLEEP=1`: the game's six job threads spin less and sleep during gameplay; CPU use drops from about 66% to about 50% at the same frame rate (UC3) |
-| `UC_MIP_FIX` | The texture cache accepts render targets drawn into one mip of a larger image, so bloom and distortion are not lost (fixes the washed-out, greyish image in UC3) |
-| `UC_MOUSE_EDGE_AIM` | The mouse turns the camera while aiming from a ledge or a climb, and at the hanging spots where the aim used to turn slowly (UC3) |
-| `UC_DEPTH_KEEP_CLEAR` | A shadow map array recreated with more layers keeps the pending depth clear of the image it replaces (fixes flickering lights, shadows and dark walls in UC3, e.g. the castle) |
-| `UC_SCOPE_SPLIT_SCALAR` | The shader translator runs a scalar instruction placed between the vector instructions of a divergent block for the whole wave, as the GPU does (fixes the black wedges and white specks in the fog of UC3's light cones) |
-| `UC_PREP_TRUST_A1` | Experimental, off in the launcher: draw preparation reuses work it can prove is still valid (about +5 FPS in the UC3 desert ruins) |
-| `UC_HLE_INORDER`, `UC_ACB_DISPATCH_PIPE` | Keep the UC2 rooftop chase at 60 FPS; turn them off if the train prologue fails |
-
-The full list, with measurements, is in the [DEVLOG](docs/uc3/DEVLOG.md).
+To build locally (Linux x86-64 host) see [docs/ANDROID_PORT.md#building-locally](docs/ANDROID_PORT.md#building-locally).
+A first build from scratch takes about 25 minutes on a 4-core machine.
 
 ## Credits
 
-- **deadinside28**: [bloodborne_pc](https://github.com/deadinside28/bloodborne_pc), the original
-  native port (the base of everything, also called bbport).
-- **Supermedo** (Mohammed Albarghouthi): the [Bloodborne Windows port](https://github.com/Supermedo/bloodborne_pc)
-  and [uncharted_pc](https://github.com/Supermedo/uncharted_pc), the source of ideas and fixes used
-  here (scalar constant copy HLE, addr64 `BUFFER_LOAD`, Ajm end-of-job rules, the `m_gfxEopTick` wait patch from 0.3.2, read-only `O_CREAT` open for Uncharted 1 sound, the Intel GPU fix from 0.3.3).
-- **Felipe Prado** and contributors: [gow3_pc](https://github.com/FelipePrado0/gow3_pc), the God of
-  War III port this repository is a fork of, with the rendering fixes by
-  [cuesta4](https://github.com/cuesta4/shadPS4/tree/eltutz).
-- **Mindro** (ManoharPadul): the [shadPS4 build for the Uncharted collection](https://github.com/ManoharPadul/ShadPS4),
-  whose release notes showed which problems to look for (texture cache, recommended settings).
-- **shadPS4 team**: the [shadPS4](https://github.com/shadps4-emu/shadPS4) video core, which does all
-  the GPU and shader translation to Vulkan.
-- **Claude** ([Anthropic](https://www.anthropic.com)): developed with Claude's help (research, code,
-  testing, packaging and documentation).
+- **deadinside28** — [bloodborne_pc](https://github.com/deadinside28/bloodborne_pc), the native
+  PS4-on-PC runtime this all builds on.
+- **Supermedo** (Mohammed Albarghouthi) — the Windows port and
+  [uncharted_pc](https://github.com/Supermedo/uncharted_pc).
+- **Felipe Prado** — [gow3_pc / SpartanPort](https://github.com/FelipePrado0/gow3_pc).
+- **zorde23 (mathe)** — [ucndc_pc](https://github.com/zorde23/ucndc_pc), the Nathan Drake
+  Collection on PC.
+- **zFitness** — [gow3_android](https://github.com/zFitness/gow3_android), the Android port of
+  God of War III this port's Android side comes from.
+- **ducvd89** — [Bloodborne-Android](https://github.com/ducvd89/Bloodborne-Android) and
+  [bloodframe](https://github.com/ducvd89/bloodframe).
+- **cuesta4**, the **shadPS4** team, the **FEX-Emu** team, the Mesa **Turnip** developers and the
+  driver packagers (The412Banner, MrPurple666, K11MCH1, StevenMXZ, whitebelyash).
+- Third-party libraries: see [docs/upstream/ucndc_pc-README.md](docs/upstream/ucndc_pc-README.md#credits)
+  and the licences under `third_party/` and `gpu/third_party/`.
 
-Also used: [LibAtrac9](https://github.com/Thealexbarney/LibAtrac9), [FFmpeg](https://ffmpeg.org),
-[SDL3](https://github.com/libsdl-org/SDL), [Dear ImGui](https://github.com/ocornut/imgui),
-[sirit](https://github.com/shadps4-emu/sirit), [magic_enum](https://github.com/Neargye/magic_enum),
-[miniz](https://github.com/richgel999/miniz), [xbyak](https://github.com/herumi/xbyak),
-[Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator),
-[FSR-Vulkan](https://github.com/FireBurn/FSR-Vulkan), [MSYS2](https://www.msys2.org) and
-[LLVM](https://llvm.org).
-
-The original God of War III port README is in [docs/gow3/README.gow3.md](docs/gow3/README.gow3.md).
+The original READMEs of the projects merged here are kept in [docs/upstream](docs/upstream).
 
 ## License
 
-GNU GPL v2 or later ([LICENSE](LICENSE)), the same as shadPS4 and the ports this one derives from.
-Third-party components keep their own licenses.
+GNU General Public License v2 or later, as the projects it is built from ([LICENSE](LICENSE)).
+Third-party components keep their own licences. Game data, game art and trademarks belong to
+their owners and are not part of this project.

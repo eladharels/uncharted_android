@@ -2,7 +2,7 @@
 
 Leia isto antes de qualquer coisa numa sessão nova. O histórico completo está no
 [DEVLOG.md](DEVLOG.md) (entradas mais novas no topo); a visão geral está em
-[PROJETO.md](../../PROJETO.md). Atualizado em 2026-10-14.
+[PROJETO.md](../upstream/ucndc_pc-PROJETO.md). Atualizado em 2026-10-14.
 
 ## Estado em uma frase
 

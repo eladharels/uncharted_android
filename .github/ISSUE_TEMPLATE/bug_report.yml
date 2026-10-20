@@ -1,90 +1,81 @@
 name: Bug report
-description: Report a problem with gow3_android
+description: Report a problem with the Uncharted Android port
 title: "[Bug]: "
 labels: ["bug"]
 
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not attach or link game files. Only report problems with a dump of your own.
+
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game
+      options:
+        - "Uncharted: Drake's Fortune"
+        - "Uncharted 2: Among Thieves"
+        - "Uncharted 3: Drake's Deception"
+        - "The launcher (before a game starts)"
+    validations:
+      required: true
+
   - type: input
     id: device
     attributes:
-      label: Device model / 设备型号
-      placeholder: For example, Redmi K70 Pro
+      label: Phone model and chip
+      placeholder: For example, Galaxy S24 Ultra (Snapdragon 8 Gen 3)
+    validations:
+      required: true
 
   - type: input
     id: android_version
     attributes:
-      label: Android version / Android 版本
-      placeholder: For example, Android 16
+      label: Android version
+      placeholder: For example, Android 16 / One UI 8.5
+
+  - type: input
+    id: driver
+    attributes:
+      label: GPU driver
+      placeholder: For example, Mesa Turnip v27.0.0-20261020-r4-8G2-OneUI
+    validations:
+      required: true
+
+  - type: input
+    id: dump
+    attributes:
+      label: Dump title ID and version
+      placeholder: For example, CUSA02344 v01.02
 
   - type: input
     id: app_version
     attributes:
-      label: App version or commit hash / 应用版本或提交哈希
+      label: App version or commit
 
   - type: textarea
     id: steps
     attributes:
-      label: Steps to reproduce / 复现步骤
-      description: Describe how to reproduce the issue, if you know. / 描述如何复现问题（如果知道的话）。
+      label: Steps to reproduce
       placeholder: |
-        1. Open the app.
-        2. ...
+        1. Pick Uncharted 2 on the home screen.
+        2. Launch.
+        3. ...
 
   - type: textarea
     id: actual
     attributes:
-      label: What happened? / 实际发生了什么？
-      description: Briefly describe the problem. / 简要描述问题现象。
+      label: What happened?
     validations:
       required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: What did you expect to happen? / 期望的行为是什么？
 
   - type: textarea
     id: log_zip
     attributes:
-      label: Log zip (required) / 日志 zip（必填）
+      label: Log zip
       description: |
-        **Required.** Issues without the exported log zip may be closed without investigation.
-        
-        1. In the launcher, open **About → 导出日志 / Export logs** to generate the log `.zip` (it contains `android-game.log` and more).
-        2. **Drag and drop the .zip file directly into this text box** — GitHub uploads it and inserts a link like `[God.of.War.III-….zip](https://github.com/user-attachments/…)`.
-        3. If the export failed, paste the log text (`android-game.log`) here instead.
-        
-        **必填。** 没有日志 zip 的问题可能被直接关闭、不予排查。
-        在启动器「关于 → 导出日志」生成日志 .zip（内含 android-game.log 等文件），
-        把 zip 文件直接拖拽进本输入框（GitHub 会自动上传并插入链接）；
-        若导出失败，可改为把 android-game.log 的文本内容粘贴到这里。
-      placeholder: |
-        Drag the exported log .zip here, e.g. [gow3-logs-2026-10-17.zip](https://github.com/user-attachments/…)
-        把导出的日志 .zip 拖拽到这里
+        In the app, open **About → Export logs**, then drag the `.zip` into this box.
+        If the export fails, paste the text of `android-game.log` instead.
     validations:
       required: true
-
-  - type: textarea
-    id: logs
-    attributes:
-      label: Other error messages / 其他错误信息
-      description: Paste any relevant error messages here (crash dialogs, Vulkan errors, …). / 粘贴其他相关的错误信息（崩溃弹窗、Vulkan 报错等）。
-
-  - type: dropdown
-    id: log_zip_confirmed
-    attributes:
-      label: Did you attach the exported log zip? / 是否已附上导出的日志 zip？
-      options:
-        - "Yes / 是"
-        - "No, the export failed (pasted log text instead) / 否，导出失败，已粘贴日志文本"
-    validations:
-      required: true
-
-  - type: upload
-    id: attachments
-    attributes:
-      label: Attach screenshots or videos / 附上截图或视频
-      description: Optional. Screenshots or a screen recording help a lot. / 可选。截图或录屏对排查很有帮助。
-    validations:
-      required: false
-      accept: ".png,.jpg,.jpeg,.gif,.webp,.log,.txt,.json,.zip,.mp4,.mov,.webm"
