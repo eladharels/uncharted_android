@@ -138,6 +138,15 @@ if [ -n "$uc_game" ] && [ "${GOW3_UC_SCALED:-0}" != 1 ]; then
     unset GOW3_RENDER_RES
     export GOW3_OUTPUT_RES=1920x1080 GOW3_WINDOW_SIZE=1920x1080
     echo "Presentation: native 1920x1080 output scaled to the screen (no UI composition)"
+    # The game's own render and output size (ucndc's GOW3_UC3_RES patch, probe.c), from the
+    # render_resolution setting; 960x540 when it is unset (the Android default for these games:
+    # 20-30 FPS on a Galaxy S24 Ultra, against 12-15 at 1920x1080). uncharted-env.txt wins.
+    uc_res=$render_res
+    [ -z "$(setting render_resolution)" ] && uc_res=960x540
+    if [ "$uc_res" != 1920x1080 ] && [ -z "${GOW3_UC3_RES:-}" ]; then
+        export GOW3_UC3_RES=$uc_res GOW3_UC3_RES_ALL=1 GOW3_UC3_MOVIE_FIX=1
+        echo "Resolution: the game renders and outputs $uc_res (render_resolution)"
+    fi
 fi
 # GPU 内存是手机的系统 RAM，和游戏的 DMEM 及 Android 共享；纹理收集器按预算工作，
 # 空闲的游戏内存拷贝延后回收。

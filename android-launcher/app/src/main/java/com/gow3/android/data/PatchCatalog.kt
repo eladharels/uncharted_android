@@ -107,7 +107,10 @@ internal fun PatchCatalog.toNativeInput(): String = buildString {
 enum class CatalogProblem { NO_GAME, INVALID_GAME, INVALID_UPDATE, UNSUPPORTED, VERSION, READ_FAILED }
 class PatchCatalogException(val problem: CatalogProblem) : Exception(problem.name)
 
-data class PatchCatalog(val titleId: String, val appVersion: String, val patches: List<GamePatch>) {
+/** [uncharted]: the Nathan Drake Collection, whose render resolution is a runtime patch
+ *  (probe.c GOW3_UC3_RES, chosen with the same render_resolution setting), not a catalogue entry. */
+data class PatchCatalog(val titleId: String, val appVersion: String, val patches: List<GamePatch>,
+                        val uncharted: Boolean = false) {
     val selectionKey: String get() = "patches_${titleId}_${appVersion.replace('.', '_')}"
 
     /** 设置页「跳过动画」快捷开关控制的补丁组：按名匹配，目录缺失的自动忽略。 */
@@ -194,7 +197,7 @@ data class PatchCatalog(val titleId: String, val appVersion: String, val patches
             val version = effective["APP_VER"] ?: throw PatchCatalogException(CatalogProblem.INVALID_GAME)
             // uncharted_android: the Nathan Drake Collection (any region) is recognised by its
             // executables, not its title ID. The God of War III patches do not apply to it.
-            if (UnchartedGames.isCollection(game)) return PatchCatalog(title, version, emptyList())
+            if (UnchartedGames.isCollection(game)) return PatchCatalog(title, version, emptyList(), uncharted = true)
             if (title !in versions) throw PatchCatalogException(CatalogProblem.UNSUPPORTED)
             if (version !in versions.getValue(title)) throw PatchCatalogException(CatalogProblem.VERSION)
             return open("God_of_War_III_Remastered_$title.xml").use { parse(it, title, version) }

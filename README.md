@@ -13,11 +13,12 @@ runtime, the shadPS4-based renderer, audio, input) is native ARM64 code.
 
 | Game | Executable | Android |
 |---|---|---|
-| Uncharted: Drake's Fortune | `eboot.bin` | Playable, about 15 FPS |
-| Uncharted 2: Among Thieves | `big2-ps4_Shipping.elf` | Playable, about 15 FPS |
-| Uncharted 3: Drake's Deception | `big3-ps4_Shipping.elf` | Playable, about 15 FPS |
+| Uncharted: Drake's Fortune | `eboot.bin` | Playable, 20-30 FPS at 540p |
+| Uncharted 2: Among Thieves | `big2-ps4_Shipping.elf` | Playable, 20-30 FPS at 540p |
+| Uncharted 3: Drake's Deception | `big3-ps4_Shipping.elf` | Playable, 20-30 FPS at 540p |
 
-Tested on a Samsung Galaxy S24 Ultra (Snapdragon 8 Gen 3, Adreno 750, Android 16 / One UI) with
+The default render resolution is 540p (Settings → Render resolution; 720p and native 1080p are
+slower, and 720p draws the controller-hint panel black). Tested on a Samsung Galaxy S24 Ultra (Snapdragon 8 Gen 3, Adreno 750, Android 16 / One UI) with
 dump CUSA02344 v01.00, the Mesa Turnip driver `v27.0.0-20261020-r4-8G2-OneUI`, a 30 FPS limit.
 Other Adreno phones should work but have not been tried; Mali and other non-Adreno GPUs are not
 supported (the port relies on Turnip). Reports from other devices are welcome (see

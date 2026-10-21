@@ -43,6 +43,9 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
   `GOW3_UC3_RTHEAP_MB`) apply on Android, and every game runs with the job workers blocking
   when idle (`GOW3_JOB_SPIN=100 GOW3_JOB_SLEEP=1`).
 
+- Render resolution setting for the collection (native, 720p, 540p, 480p; default 540p)
+  through ucndc's `GOW3_UC3_RES` patch: 20-30 FPS at 540p on a Galaxy S24 Ultra.
+
 ### Known gaps
 - See [docs/ANDROID_PORT.md](docs/ANDROID_PORT.md#known-gaps).
 

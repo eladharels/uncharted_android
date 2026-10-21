@@ -104,6 +104,12 @@ thread's entry), which is where Uncharted 3 switches.
   cycle, so they reached it at once: 25-50 ms of kernel time per frame in the GPU thread).
 - Timeline semaphore queries are rate-limited (`GOW3_SEM_POLL_US`, 100 µs) and their cost is
   logged with `GOW3_FRAME_STATS`.
+- Render resolution: the launcher's *Render resolution* setting (native, 720p, 540p, 480p)
+  chooses the game's own render and output size through ucndc's `GOW3_UC3_RES` patch
+  (`run-bionic.sh` sets `GOW3_UC3_RES`, `GOW3_UC3_RES_ALL=1` and `GOW3_UC3_MOVIE_FIX=1`, the
+  PC launcher's combination). The default is 540p: the phone's GPU is the limit at 1080p, and
+  the game threads wait less for GPU readbacks when the GPU finishes sooner (Galaxy S24 Ultra:
+  12-15 FPS at 1080p, 20-30 at 540p).
 - Mouse input is stubbed on Android (`gpu/shim/window_android.cpp`).
 
 ### Launcher
@@ -159,9 +165,11 @@ own. `docs/QUICKSTART.md` (from gow3_android) has more detail on the host depend
 
 ## Known gaps
 
-- Performance: gameplay runs at about 15 FPS on a Galaxy S24 Ultra, CPU-bound in the GPU
-  command thread (about 40 µs per draw, 1,000-1,800 draws per frame) and in game threads
-  waiting for GPU readbacks.
+- Performance: 20-30 FPS at 540p on a Galaxy S24 Ultra (30 FPS limit), 12-15 at 1080p. What
+  remains is the game threads waiting for GPU readbacks (`uc3 readbacks: ... waited by faulting
+  threads` in the log) and the GPU itself.
+- At 720p (1280x720) the controller-hint panel at the bottom right is drawn as a solid black box
+  with a blocky corner (its blurred backdrop); 1080p and 540p are fine.
 - A separate update folder is not overlaid for the Uncharted executables: merge the update into
   the base dump.
 - Some internal names (packages, file names, settings keys) still say `gow3`, inherited from
