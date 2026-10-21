@@ -92,9 +92,18 @@ thread's entry), which is where Uncharted 3 switches.
 ### Runtime
 
 - The PC port's x86 code hooks (God of War III cheats, mouse camera callbacks) are off under the
-  JIT, as in gow3_android. ucndc's game patches that are only defined on Windows
-  (`GOW3_EOP_TICK_WAIT` for Uncharted 1, `GOW3_JOB_SPIN`/`GOW3_JOB_SLEEP` for Uncharted 3) are
-  not applied on Android; the games run without them.
+  JIT, as in gow3_android. ucndc's game patches that only change bytes of the image
+  (`GOW3_EOP_TICK_WAIT`, `GOW3_JOB_SPIN`/`GOW3_JOB_SLEEP`, `GOW3_UC3_RES`,
+  `GOW3_UC3_RTHEAP_MB`) are applied on Android too, before the JIT translates the code.
+- The job workers: Naughty Dog's six `NdJobWorkerThread`s spin for work without blocking during
+  gameplay. On a phone that takes most of the cores from the renderer's threads, so every game
+  runs with `GOW3_JOB_SPIN=100 GOW3_JOB_SLEEP=1` (the PC port's Uncharted 3 setting).
+- The renderer's wait loops (`common/spin_wait.h`): on arm64 they spin `GOW3_SPIN_US` (20 µs),
+  yield as long, then sleep `GOW3_WAIT_SLEEP_US` (50 µs) per poll, instead of `sched_yield`
+  for the whole wait (the x86-64 loops reached it after ~150 µs of PAUSE; arm64's YIELD is a
+  cycle, so they reached it at once: 25-50 ms of kernel time per frame in the GPU thread).
+- Timeline semaphore queries are rate-limited (`GOW3_SEM_POLL_US`, 100 µs) and their cost is
+  logged with `GOW3_FRAME_STATS`.
 - Mouse input is stubbed on Android (`gpu/shim/window_android.cpp`).
 
 ### Launcher
@@ -153,7 +162,6 @@ own. `docs/QUICKSTART.md` (from gow3_android) has more detail on the host depend
 - Performance: gameplay runs at about 15 FPS on a Galaxy S24 Ultra, CPU-bound in the GPU
   command thread (about 40 µs per draw, 1,000-1,800 draws per frame) and in game threads
   waiting for GPU readbacks.
-- `GOW3_EOP_TICK_WAIT` and `GOW3_JOB_SPIN/SLEEP` on Android.
 - A separate update folder is not overlaid for the Uncharted executables: merge the update into
   the base dump.
 - Some internal names (packages, file names, settings keys) still say `gow3`, inherited from

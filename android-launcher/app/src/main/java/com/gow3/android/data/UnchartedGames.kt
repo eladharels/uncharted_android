@@ -27,21 +27,25 @@ object UnchartedGames {
         "GOW3_READBACK_FAST" to "1", "GOW3_READBACK_FAST_WAIT" to "1", "GOW3_READBACK_FAST_SIDEQ" to "1",
         // Tested with stale readbacks off (ucndc gow3_settings.h); gow3_android defaults them on.
         "GOW3_STALE_READBACK" to "0",
+        // uncharted_android: the six Naughty Dog job workers spin for work without ever blocking
+        // during gameplay (probe.c patch_job_spin). On the PC that costs idle cores; on a phone
+        // with eight, it takes the cores the renderer's threads need (12 FPS with the CPU at 70%).
+        // They spin 100 times and block, in gameplay too, as the PC port runs Uncharted 3.
+        "GOW3_JOB_SPIN" to "100", "GOW3_JOB_SLEEP" to "1",
     )
 
     val GAMES = listOf(
         Game("uc1", "Uncharted: Drake's Fortune", "eboot.bin", COMMON + mapOf(
             "GOW3_COMPUTE_PIPE" to "1", "GOW3_LOW_IMAGE" to "1", "GOW3_AJM_END_RULES" to "1",
             "GOW3_EOP_TICK_WAIT" to "1", "GOW3_READBACK_SIDEQ" to "1",
-        ), "Experimental: one PC fix (EOP tick wait) is not on Android yet"),
+        ), "Playable (Galaxy S24 Ultra)"),
         Game("uc2", "Uncharted 2: Among Thieves", "big2-ps4_Shipping.elf", COMMON + mapOf(
             "GOW3_HLE_INORDER" to "1", "GOW3_ACB_DISPATCH_PIPE" to "1", "GOW3_READBACK_SIDEQ" to "1",
-        ), "Untested on Android"),
+        ), "Playable (Galaxy S24 Ultra)"),
         Game("uc3", "Uncharted 3: Drake's Deception", "big3-ps4_Shipping.elf", COMMON + mapOf(
-            "GOW3_COMPUTE_PIPE" to "1", "GOW3_SYNC_SMALL_TARGETS" to "1", "GOW3_JOB_SPIN" to "100",
-            "GOW3_JOB_SLEEP" to "1", "GOW3_MIP_FIX" to "1", "GOW3_SCOPE_SPLIT_SCALAR" to "1",
-            "GOW3_DEPTH_KEEP_CLEAR" to "1",
-        ), "Starts on Android (Galaxy S24 Ultra)"),
+            "GOW3_COMPUTE_PIPE" to "1", "GOW3_SYNC_SMALL_TARGETS" to "1", "GOW3_MIP_FIX" to "1",
+            "GOW3_SCOPE_SPLIT_SCALAR" to "1", "GOW3_DEPTH_KEEP_CLEAR" to "1",
+        ), "Playable (Galaxy S24 Ultra)"),
     )
 
     /** The collection: its folder holds the Uncharted 2 and 3 executables next to eboot.bin. */

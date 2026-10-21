@@ -37,6 +37,12 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
   III's scaled session, whose UI composition redirected the target the scene is composited
   into. They output 1920x1080 as on the PC, scaled to the screen by the presenter.
 
+- Performance on arm64: the renderer's wait loops back off to sleeping instead of
+  `sched_yield` (`common/spin_wait.h`); timeline semaphore queries are rate-limited; ucndc's
+  image byte patches (`GOW3_EOP_TICK_WAIT`, `GOW3_JOB_SPIN`/`GOW3_JOB_SLEEP`, `GOW3_UC3_RES`,
+  `GOW3_UC3_RTHEAP_MB`) apply on Android, and every game runs with the job workers blocking
+  when idle (`GOW3_JOB_SPIN=100 GOW3_JOB_SLEEP=1`).
+
 ### Known gaps
 - See [docs/ANDROID_PORT.md](docs/ANDROID_PORT.md#known-gaps).
 

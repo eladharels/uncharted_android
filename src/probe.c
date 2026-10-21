@@ -236,6 +236,10 @@ static LONG CALLBACK vectored_fault(EXCEPTION_POINTERS *info) {
     return EXCEPTION_CONTINUE_SEARCH;
 }
 static LONG WINAPI unhandled_fault(EXCEPTION_POINTERS *info) { return fatal_exception(info); }
+#endif /* _WIN32 */
+/* ucndc's game patches below change bytes of the x86-64 image before it runs, which works on
+ * every host (android port: under the JIT too); the code hooks after them (install_*) write
+ * x86-64 stubs and are Windows-only. */
 /* GOW3_EOP_TICK_WAIT=1 (from SuperMedo's uncharted_pc 0.3.2, GPL). Naughty Dog's FrameBegin
  * (ndlib/render/fg-draw-mgr.cpp) asserts that the frame it recycles has its GPU end-of-pipe
  * tick. It never waits: on PS4 the GPU always keeps up. Here the GPU side can fall behind
@@ -569,6 +573,7 @@ static void *uc3_res_log(void *unused) {
     }
     return NULL;
 }
+#ifdef _WIN32
 /* Mouse camera callbacks (runtime_guest_callbacks in runtime_pad.c; from SuperMedo's uncharted_pc,
  * GPL): a guest function found by its code calls a host function first, with rdi, rsi, the image
  * base and r14 (Microsoft x64 convention on every host). The thunk keeps the guest's registers and
@@ -1727,13 +1732,14 @@ int main(int argc, char **argv) {
 #else
     (void)game_hooks;
 #endif
-    /* ucndc's game patches and code hooks below are defined in the Windows-only part of this file
-     * (android port TODO: GOW3_EOP_TICK_WAIT, which Uncharted 1 needs, and GOW3_JOB_SPIN/SLEEP). */
+    /* ucndc's code hooks (x86-64 stubs written into the image) are Windows-only. */
 #ifdef _WIN32
     if (gpu_enabled && getenv("GOW3_SCREAM_LOG") && getenv("GOW3_SCREAM_LOG")[0]=='1')
         install_scream_log(size);
     /* ucndc: mouse camera (input.ini with mouse_look=1; GOW3_MOUSE_CAMERA=0 keeps the mouse a stick) */
     if (gpu_enabled && runtime_pad_mouse_camera()) install_game_callbacks(segments, ns, size);
+#endif
+    /* ucndc's game patches (bytes of the image): on every host. */
     if (gpu_enabled && getenv("GOW3_EOP_TICK_WAIT") && getenv("GOW3_EOP_TICK_WAIT")[0]=='1')
         patch_eop_tick_wait(size);
     if ((getenv("GOW3_JOB_SPIN") && getenv("GOW3_JOB_SPIN")[0]) || (getenv("GOW3_JOB_SLEEP") && getenv("GOW3_JOB_SLEEP")[0] == '1'))
@@ -1755,7 +1761,6 @@ int main(int argc, char **argv) {
         if (!pthread_create(&res_log_thread, NULL, uc3_res_log, NULL)) pthread_detach(res_log_thread);
         printf("%s resolution: logging the video structure at %#" PRIx64 "\n", res_game, uc_res_struct);
     }
-#endif
 #ifdef _WIN32
     printf("Guest TCB loads redirected to the TEB TLS slot: %" PRIu64 "\n", patch_tcb_loads(segments, ns));
 #endif
