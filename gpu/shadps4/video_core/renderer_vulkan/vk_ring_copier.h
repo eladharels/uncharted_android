@@ -20,6 +20,7 @@
 #include <memory>
 #include <thread>
 #include "common/rdtsc.h"
+#include "common/spin_wait.h"
 
 #include "common/thread.h"
 #include "common/types.h"
@@ -143,7 +144,8 @@ public:
             // Run the copies this wait needs; when they are all claimed, wait for the others.
             u64 copied = 0;
             u64 copy_cycles = 0;
-            for (u32 spins = 0; !IsDone(seq);) {
+            Common::SpinWait backoff;
+            while (!IsDone(seq)) {
                 const u64 c0 = Common::RawRDTSC();
                 if (const u64 n = Claim(seq); n != NoJob) {
                     RunJob(n);
@@ -151,11 +153,7 @@ public:
                     ++copied;
                     continue;
                 }
-                if (spins++ < 4096) {
-                    COMMON_CPU_RELAX();
-                } else {
-                    std::this_thread::yield();
-                }
+                backoff();
             }
             (stage_b ? b_copies : a_copies).fetch_add(copied, std::memory_order_relaxed);
             (stage_b ? b_copy_cycles : a_copy_cycles)
@@ -165,12 +163,9 @@ public:
             (stage_b ? b_waits : waits).fetch_add(1, std::memory_order_relaxed);
             return;
         }
-        for (u32 spins = 0; !IsDone(seq); ++spins) {
-            if (spins < 4096) {
-                COMMON_CPU_RELAX();
-            } else {
-                std::this_thread::yield();
-            }
+        Common::SpinWait backoff;
+        while (!IsDone(seq)) {
+            backoff();
         }
         (stage_b ? b_wait_cycles : wait_cycles).fetch_add(Common::RawRDTSC() - start, std::memory_order_relaxed);
         (stage_b ? b_waits : waits).fetch_add(1, std::memory_order_relaxed);

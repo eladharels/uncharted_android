@@ -19,6 +19,7 @@
 #include "video_core/renderer_vulkan/vk_wait_diagnostics.h"
 #include "common/arch.h"
 #include "common/assert.h"
+#include "common/spin_wait.h"
 #include "common/debug.h"
 #include "common/thread.h"
 #include "imgui/renderer/texture_manager.h"
@@ -245,10 +246,11 @@ void Scheduler::WaitDeferredSignals() {
     KickRecording(true);
     const auto started = std::chrono::steady_clock::now();
     bool reported = false;
+    Common::SpinWait backoff{true};
     while (deferred_signals_done->load(std::memory_order_acquire) < issued) {
         // Helps the copy threads the signals wait for.
         Gow3Copy::WaitAsync();
-        std::this_thread::yield();
+        backoff();
         // uc3 (Fable R.8.4): a wait this long is a hang in the making; say what it waits for.
         if (!reported && std::chrono::steady_clock::now() - started > std::chrono::seconds{2}) {
             reported = true;
@@ -271,9 +273,10 @@ void Scheduler::WaitHostCopies() {
         KickRecording(true);
         const auto started = std::chrono::steady_clock::now();
         bool reported = false;
+        Common::SpinWait backoff{true};
         while (host_copies_done.load(std::memory_order_acquire) <
                host_copies_issued.load(std::memory_order_relaxed)) {
-            std::this_thread::yield();
+            backoff();
             // uc3: a wait this long is a hang in the making; say what it waits for.
             if (!reported && std::chrono::steady_clock::now() - started > std::chrono::seconds{2}) {
                 reported = true;

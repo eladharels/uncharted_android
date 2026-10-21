@@ -15,6 +15,7 @@
 
 #include "gow3_toggles.h"
 #include "common/thread.h"
+#include "common/spin_wait.h"
 
 namespace Gow3Copy {
 namespace {
@@ -76,6 +77,7 @@ public:
 
     void WaitAll() {
         // The waiting thread helps instead of only spinning.
+        Common::SpinWait backoff{true};
         while (true) {
             Task task;
             {
@@ -90,8 +92,9 @@ public:
             }
             if (task.run) {
                 RunAsync(task);
+                backoff.Reset();
             } else {
-                std::this_thread::yield();
+                backoff();
             }
         }
     }
@@ -108,8 +111,9 @@ public:
         cv.notify_all();
         Work(*job);
         // Workers only call the task for indices below count, all done before this returns.
+        Common::SpinWait backoff{true};
         while (job->done.load(std::memory_order_acquire) < count) {
-            std::this_thread::yield();
+            backoff();
         }
         std::scoped_lock lk{mutex};
         if (current == job) {

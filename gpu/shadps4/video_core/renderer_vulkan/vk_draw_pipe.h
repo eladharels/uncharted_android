@@ -25,6 +25,7 @@
 #include "common/thread.h"
 #include "common/rdtsc.h"
 #include "common/arch.h"
+#include "common/spin_wait.h"
 #include "common/types.h"
 #include "video_core/renderer_vulkan/vk_ring_copier.h"
 
@@ -114,12 +115,9 @@ public:
         const u32 slot = reason < NumReasons ? reason : ReasonRasterizer;
         ++drains_by_reason[slot];
         const u64 start = Common::FencedRDTSC();
-        for (u32 spins = 0; consumed.load(std::memory_order_acquire) != head; ++spins) {
-            if (spins < 4096) {
-                COMMON_CPU_RELAX();
-            } else {
-                std::this_thread::yield();
-            }
+        Common::SpinWait backoff;
+        while (consumed.load(std::memory_order_acquire) != head) {
+            backoff();
         }
         const u64 waited = Common::FencedRDTSC() - start;
         drain_cycles += waited;
