@@ -182,6 +182,29 @@ own. `docs/QUICKSTART.md` (from gow3_android) has more detail on the host depend
 - Some internal names (packages, file names, settings keys) still say `gow3`, inherited from
   the God of War III port; renaming them would make upstream merges harder.
 
+## Next steps (as of 2026-10-22)
+
+Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
+
+1. **Uncharted 1, recording thread (stage B), 8.5-9 µs per draw.** Profile it on the device
+   (a self-profiling mode: bundle simpleperf from the NDK, record a few seconds from the
+   overlay, export with the logs) and cut the per-draw cost: resource binding (3.3 µs),
+   the Vulkan calls (~4 µs), and the ~84 µs per recorded task (submissions). Target: the
+   20-24 FPS stretches at a steady 30.
+2. **Uncharted 2, train prologue, 800-1,000 compute dispatches per frame.** Each is a sync
+   point (`A:dispatch` 108-145 µs on stage A, game threads waiting up to 115 ms for results).
+   `GOW3_HLE_INORDER=1 GOW3_ACB_DISPATCH_PIPE=1` must stay on (off: 2,500 drains/s, 5 FPS).
+   Look at what the dispatches are (scalar copies the HLE could take, or real compute) and
+   whether the readback waits can be shortened.
+3. **Uncharted 2, GPU hang in the train prologue** (device lost on a full-screen draw,
+   ps `3371ae8d` after cs `1c3672c5` 480x1x1; happened once, not reproduced). Watch for it; if it
+   repeats, dump that pixel shader and check it against native resolution.
+4. **720p controller-hint panel** drawn black (Uncharted 1): frame-capture the panel's draw
+   at 720p and compare with 1080p; likely a size the game derives from the output.
+5. Settings that were measured and do not help at 540p: `GOW3_STALE_READBACK`,
+   `GOW3_READBACKS=1`, `GOW3_PREP_TRUST_A1`, `GOW3_EAGER_SUBMIT=0` (worse),
+   `GOW3_TEXTURE_HELPER=1` (worse). Do not retest without a code change behind them.
+
 ## Debugging
 
 - `uncharted-env.txt` in the game folder overrides runtime options without a new APK: one
