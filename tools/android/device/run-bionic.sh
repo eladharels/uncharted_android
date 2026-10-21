@@ -104,6 +104,18 @@ export GOW3_OUTPUT_RES=$output GOW3_LIVE_RES=0
 # scaled_session 标记 + camera 常量就绪前的场景尺寸回退（真实值见上方 render_res 映射）。
 # 桌面 live 路径在 Android 不可达（本脚本恒导出 GOW3_RENDER_RES）。
 export GOW3_RENDER_RES=$render_res
+# uncharted_android: the Uncharted games present the way they were tested on the PC: no scaled
+# session (GOW3_RENDER_RES unset) and the game's own 1920x1080 output, which the presenter scales
+# to the screen. The scaled session's UI composition is God of War III's: it takes the first
+# native-viewport draw into a 1080p RGBA8 target for the UI and redirects that target to an
+# output-size image, so the scene the Uncharted games composite into such a target never
+# reaches the screen (black gameplay under a working HUD). GOW3_UC_SCALED=1 restores it.
+uc_game=$(derived GOW3_UC_GAME)
+if [ -n "$uc_game" ] && [ "${GOW3_UC_SCALED:-0}" != 1 ]; then
+    unset GOW3_RENDER_RES
+    export GOW3_OUTPUT_RES=1920x1080 GOW3_WINDOW_SIZE=1920x1080
+    echo "Presentation: native 1920x1080 output scaled to the screen (no UI composition)"
+fi
 # GPU 内存是手机的系统 RAM，和游戏的 DMEM 及 Android 共享；纹理收集器按预算工作，
 # 空闲的游戏内存拷贝延后回收。
 # DMEM 基线与 launch_env.py --base-dmem 7104 一致（launcher 同样用 7104）（release 补丁要求 7104MiB）；运行前派生出的

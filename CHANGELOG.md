@@ -31,6 +31,9 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
   walker context, records each dword's guest source for the GPU-written fixup, copies the
   ReadConst windows for per-lane offsets, and lets GPU page tracking resolve its faults instead
   of zeroing loads for good. Cached shaders are rebuilt once (`Profile::srt_walker_revision`).
+- Gameplay still black under a working HUD: the Uncharted games no longer run in God of War
+  III's scaled session, whose UI composition redirected the target the scene is composited
+  into. They output 1920x1080 as on the PC, scaled to the screen by the presenter.
 
 ### Known gaps
 - See [docs/ANDROID_PORT.md](docs/ANDROID_PORT.md#known-gaps).
