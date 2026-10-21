@@ -54,6 +54,10 @@ struct Profile {
     bool needs_unorm_fixup{};
     bool needs_clip_distance_emulation{};
     bool supports_shader_stencil_export{};
+    /// uncharted_android: bumped when the compiled SRT walkers change meaning (2: the Uncharted
+    /// walker context and ReadConst windows in the arm64 bytecode), so the pipeline cache that
+    /// stores them is rebuilt instead of reusing old walkers.
+    u32 srt_walker_revision{2};
 
     bool operator==(const Profile&) const = default;
 };

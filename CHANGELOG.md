@@ -25,6 +25,13 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
 - Android build: fmt 11.2.0, NDK 29 in CI, job counts sized to the machine, host header packages
   staged automatically, host compiler flags kept away from the NDK.
 
+### Fixed
+- Black screen once gameplay starts (audio playing, menu remnants frozen on screen): the arm64
+  SRT walker now follows table pointers through the unprotected backing view with the uc3
+  walker context, records each dword's guest source for the GPU-written fixup, copies the
+  ReadConst windows for per-lane offsets, and lets GPU page tracking resolve its faults instead
+  of zeroing loads for good. Cached shaders are rebuilt once (`Profile::srt_walker_revision`).
+
 ### Known gaps
 - See [docs/ANDROID_PORT.md](docs/ANDROID_PORT.md#known-gaps).
 

@@ -754,6 +754,7 @@ uint64_t runtime_disabled_optimizations;
 /* Speculative readers of guest memory (GPU draw-preparation workers) register a recovery
  * point: a fault on that thread jumps back to it instead of terminating (probe.c). */
 __thread sigjmp_buf *runtime_fault_recover;
+__thread int runtime_fault_recover_gpu;
 static void *toggle_watcher(void *path) {
     for (unsigned long long last=ULLONG_MAX;;) {
         FILE *f=fopen(path,"r");

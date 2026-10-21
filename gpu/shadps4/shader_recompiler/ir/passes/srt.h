@@ -50,9 +50,10 @@ inline const void* SrtWalkerCode(PFN_SrtWalker walker) {
 }
 #else
 /// On non-x86 hosts the walker is portable SRT bytecode, not executable machine code
-/// (gow3_android). android port TODO: the uc3 walker context (load_ptr through the backing
-/// view, src_table for GPU-written leaves) and ReadConst windows are not in the bytecode yet.
-void RunSrtProgram(const u32* program, const u32* user_data, u32* flat_dst);
+/// (gow3_android), extended with the uc3 walker context and ReadConst windows.
+/// `ctx`: the uc3 walker context (pointer loader, guest source table), or null for plain reads.
+void RunSrtProgram(const u32* program, const u32* user_data, u32* flat_dst,
+                   SrtWalkCtx* ctx = nullptr);
 struct SrtWalker {
     const u32* program{};
     void operator()(const u32* user_data, u32* flat_dst) const {

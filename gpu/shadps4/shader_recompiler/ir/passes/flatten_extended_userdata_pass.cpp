@@ -56,6 +56,14 @@ PFN_SrtWalker RegisterWalkerCode(const u8* ptr, size_t size) {
     return func_addr;
 }
 
+} // namespace Shader
+#endif // ARCH_X86_64
+
+// uc3 walker hooks (Fable R.8.1 and later): shared by the x86-64 machine-code walker and, in the
+// android port, the arm64 SRT bytecode (RunSrtProgram), which reads tables through the same
+// pointer loader and records the same guest sources for the fixup after the walk.
+namespace Shader {
+
 namespace {
 
 SrtPtr PS4_SYSV_ABI DefaultSrtLoadPtr(const u8* host_base, u64 guest_base, u64 off) {
@@ -157,7 +165,11 @@ void RunSrtWalker(PFN_SrtWalker walker, const u32* user_data, u32* flat, size_t 
     }
     const bool was_sync = t_srt_sync;
     t_srt_sync = sync;
+#ifdef ARCH_X86_64
     walker(user_data, flat, &ctx);
+#else
+    RunSrtProgram(walker.program, user_data, flat, &ctx);
+#endif
     if (t_srt_read_pages) {
         for (const u64 address : src) {
             if (address) {
@@ -174,6 +186,14 @@ void RunSrtWalker(PFN_SrtWalker walker, const u32* user_data, u32* flat, size_t 
     t_srt_sync = was_sync;
 }
 
+#ifndef ARCH_X86_64
+// The bytecode walker reads tables through the loader and never faults in walker code.
+bool DecodeSrtWalkerLoad(const void*, SrtWalkerLoad&) {
+    return false;
+}
+
+} // namespace Shader
+#else
 bool DecodeSrtWalkerLoad(const void* rip, SrtWalkerLoad& load) {
     // The whole code buffer: walkers loaded from the pipeline cache never set
     // g_srt_codegen_start.
@@ -284,10 +304,14 @@ static bool SrtWalkerSignalHandler(void* context, void* fault_address) {
     return true;
 }
 
-#else
+#endif // ARCH_X86_64
+
+#ifndef ARCH_X86_64
 
 namespace {
 // Portable SRT bytecode used on ARM64.  The x86-64 path below emits equivalent machine code.
+// uncharted_android: OpCopyWindow (a ReadConst window) was added at the end, so programs of the
+// earlier set keep their meaning; Profile::srt_walker_revision rebuilds cached ones anyway.
 enum SrtOp : u32 {
     OpEnd,
     OpPushImm,
@@ -310,6 +334,7 @@ enum SrtOp : u32 {
     OpUMin,
     OpUMax,
     OpBitFieldUExtract,
+    OpCopyWindow, // dst_start, count: the current table's first `count` dwords
 };
 constexpr u32 OpZeroed = 0x80000000u;
 constexpr u32 SrtMagic = 0x42545253u; // "SRTB"
@@ -331,54 +356,114 @@ PFN_SrtWalker RegisterWalkerCode(const u8* ptr, size_t size) {
     return SrtWalker{program};
 }
 
-void RunSrtProgram(const u32* program, const u32* user_data, u32* flat) {
+// uncharted_android: the walk follows the uc3 walker context when one is given (RunSrtWalker):
+// table pointers go through ctx->load_ptr, which returns where the table is read (the
+// unprotected backing view) and its guest address, and every flattened dword records its guest
+// source in ctx->src_table for the fixup after the walk, as the x86-64 walker does.
+void RunSrtProgram(const u32* program, const u32* user_data, u32* flat, SrtWalkCtx* ctx) {
     u32* const code = const_cast<u32*>(program);
+    // A load that faults reads as zero for this walk (the walk starts again with it zeroed): with
+    // the backing view a fault is rare, and the next walk may well read the value. After
+    // MaxRunFaults faults in one walk a load is zeroed for good, as upstream does.
+    constexpr u32 MaxRunFaults = 16;
     sigjmp_buf* const previous = runtime_fault_recover;
+    const int previous_gpu = runtime_fault_recover_gpu;
+    // Like the x86-64 walker, whose faults go to GPU page tracking first: on a thread that may
+    // read GPU-written bytes back (not inside another speculative read), a load from a watched
+    // page is resolved there instead of reading as zero.
+    runtime_fault_recover_gpu = previous == nullptr && SrtWalkerSyncAllowed();
     sigjmp_buf recover;
-    u32* volatile faulted = nullptr;
+    volatile u32 faulted_pc = 0;
+    volatile u32 run_zeroed[MaxRunFaults];
+    volatile u32 run_zeroed_count = 0;
     if (sigsetjmp(recover, 0)) {
-        __atomic_fetch_or(faulted, OpZeroed, __ATOMIC_RELAXED);
-        LOG_WARNING(Render_Recompiler, "SRT walker load faulted; using zero");
+        if (run_zeroed_count < MaxRunFaults) {
+            run_zeroed[run_zeroed_count] = faulted_pc;
+            run_zeroed_count = run_zeroed_count + 1;
+        } else if (faulted_pc != 0) {
+            __atomic_fetch_or(&code[faulted_pc], OpZeroed, __ATOMIC_RELAXED);
+            LOG_WARNING(Render_Recompiler, "SRT walker load faulted; using zero");
+        }
     }
     runtime_fault_recover = &recover;
-    const u8* stack[MaxDepth];
+    const auto zeroed_in_run = [&](u32 at_pc) {
+        for (u32 i = 0; i < run_zeroed_count; ++i) {
+            if (run_zeroed[i] == at_pc) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const u8* host_stack[MaxDepth];
+    u64 guest_stack[MaxDepth];
     u32 values[MaxValues];
     u32 depth = 0, count = 0;
-    const u8* pointer = reinterpret_cast<const u8*>(user_data);
+    // Where the current table is read, and its guest address (0 for the user data).
+    const u8* host = reinterpret_cast<const u8*>(user_data);
+    u64 guest = 0;
+    u64* const src = ctx ? ctx->src_table : nullptr;
+    const PFN_SrtLoadPtr load_ptr = ctx ? ctx->load_ptr : nullptr;
+    const auto read_dword = [&](u32 at_pc, bool zeroed, u32 offset, u32 dst) {
+        u32 value = 0;
+        if (!zeroed && host) {
+            faulted_pc = at_pc;
+            std::memcpy(&value, host + offset, sizeof(value));
+        }
+        flat[dst] = value;
+        if (src) {
+            src[dst] = guest && !zeroed ? guest + offset : 0;
+        }
+    };
 
     for (u32 pc = 1;;) {
-        u32* const at = &code[pc++];
-        const u32 word = __atomic_load_n(at, __ATOMIC_RELAXED);
+        const u32 op_pc = pc++;
+        const u32 word = __atomic_load_n(&code[op_pc], __ATOMIC_RELAXED);
         const u32 op = word & ~OpZeroed;
-        const bool zeroed = (word & OpZeroed) != 0;
+        const bool zeroed = (word & OpZeroed) != 0 || zeroed_in_run(op_pc);
         switch (op) {
         case OpEnd:
             runtime_fault_recover = previous;
+            runtime_fault_recover_gpu = previous_gpu;
             return;
         case OpPushImm:
         case OpPushDyn: {
             const u32 offset = (op == OpPushImm ? code[pc++] : values[--count]) << 2;
-            u64 next = 0;
-            if (!zeroed) {
-                faulted = at;
-                std::memcpy(&next, pointer + offset, sizeof(next));
+            SrtPtr next{0, 0};
+            if (!zeroed && host) {
+                faulted_pc = op_pc;
+                if (load_ptr) {
+                    next = load_ptr(host, guest, offset);
+                } else {
+                    u64 value = 0;
+                    std::memcpy(&value, host + offset, sizeof(value));
+                    value &= 0xFFFFFFFFFFFFull;
+                    next = {value, value};
+                }
             }
-            stack[depth++] = pointer;
-            pointer = reinterpret_cast<const u8*>(next & 0xFFFFFFFFFFFFull);
+            host_stack[depth] = host;
+            guest_stack[depth] = guest;
+            ++depth;
+            host = reinterpret_cast<const u8*>(next.host);
+            guest = next.guest;
             break;
         }
         case OpPop:
-            pointer = stack[--depth];
+            --depth;
+            host = host_stack[depth];
+            guest = guest_stack[depth];
             break;
         case OpCopyImm:
         case OpCopyDyn: {
             const u32 offset = (op == OpCopyImm ? code[pc++] : values[--count]) << 2;
-            u32 value = 0;
-            if (!zeroed) {
-                faulted = at;
-                std::memcpy(&value, pointer + offset, sizeof(value));
+            read_dword(op_pc, zeroed, offset, code[pc++]);
+            break;
+        }
+        case OpCopyWindow: {
+            const u32 start = code[pc++];
+            const u32 dwords = code[pc++];
+            for (u32 i = 0; i < dwords; ++i) {
+                read_dword(op_pc, zeroed, i << 2, start + i);
             }
-            flat[code[pc++]] = value;
             break;
         }
         case OpUserData:
@@ -1129,11 +1214,24 @@ static bool ComputeOffset(SrtProgram& p, PassInfo& pass_info, const IR::Value& o
         return true;
     case IR::Opcode::ReadConst:
     case IR::Opcode::ReadConstBuffer:
+        if (inst->GetOpcode() == IR::Opcode::ReadConst &&
+            (pass_info.DeduplicateInstruction(inst)->Flags<u32>() & ReadConstWindowFlag)) {
+            return false; // uc3 (SuperMedo): varies per lane
+        }
         if (u16 offset = GetFlatbufOffset(pass_info.DeduplicateInstruction(inst)); offset != 0) {
             p.insert(p.end(), {OpFlat, offset});
             return true;
         }
         return false;
+    case IR::Opcode::ReadFirstLane:
+        // uc3 (SuperMedo): a uniform offset moved through a vector register has the value of its
+        // operand, as in the x86-64 walker.
+        if (WindowAddr64Only()) {
+            LOG_ERROR(Render_Recompiler, "Unexpected instruction for offset computation, {}",
+                      magic_enum::enum_name(inst->GetOpcode()));
+            return false;
+        }
+        return ComputeOffset(p, pass_info, inst->Arg(0));
     case IR::Opcode::IAdd32: return EmitComputeOffsetOp(p, pass_info, inst, OpAdd, 2);
     case IR::Opcode::ISub32: return EmitComputeOffsetOp(p, pass_info, inst, OpSub, 2);
     case IR::Opcode::IMul32: return EmitComputeOffsetOp(p, pass_info, inst, OpMul, 2);
@@ -1174,12 +1272,31 @@ static void VisitPointer(const IR::Value& off_dw, IR::Inst* subtree, PassInfo& p
     }
     auto* use_list = pass_info.GetUsesAsPointer(subtree);
     ASSERT(use_list);
+    // uncharted_android: the uc3 ReadConst windows, as the x86-64 VisitPointer emits them.
+    boost::container::small_vector<IR::Inst*, 8> windowed;
     for (auto [src_off_dw, use] : *use_list) {
         if (src_off_dw.IsImmediate()) {
             p.insert(p.end(), {OpCopyImm, src_off_dw.U32(), pass_info.dst_off_dw});
         } else {
+            const bool is_addr64 = use->GetOpcode() == IR::Opcode::ReadConst &&
+                                   (use->Flags<u32>() & ReadConstAddr64Mark);
+            const bool may_window = !WindowAddr64Only() || is_addr64;
+            if (use->GetOpcode() == IR::Opcode::ReadConst && !IsBindTimeOffset(src_off_dw)) {
+                if (may_window) {
+                    windowed.push_back(use); // an offset that varies per lane
+                    pass_info.addr64_windowed += is_addr64;
+                } else {
+                    LOG_ERROR(Render_Recompiler, "Failed to compute offset for SRT walker");
+                }
+                continue;
+            }
             SrtProgram offset;
             if (!ComputeOffset(offset, pass_info, src_off_dw)) {
+                if (use->GetOpcode() == IR::Opcode::ReadConst && may_window) {
+                    windowed.push_back(use);
+                    pass_info.addr64_windowed += is_addr64;
+                    continue;
+                }
                 LOG_ERROR(Render_Recompiler, "Failed to compute offset for SRT walker");
                 continue;
             }
@@ -1187,6 +1304,15 @@ static void VisitPointer(const IR::Value& off_dw, IR::Inst* subtree, PassInfo& p
             p.insert(p.end(), {OpCopyDyn, pass_info.dst_off_dw});
         }
         SetFlatbufOffset(use, pass_info.dst_off_dw++);
+    }
+    if (!windowed.empty()) {
+        const u32 start = pass_info.dst_off_dw;
+        pass_info.windowed_reads += static_cast<u32>(windowed.size());
+        p.insert(p.end(), {OpCopyWindow, start, ReadConstWindowDwords()});
+        pass_info.dst_off_dw += ReadConstWindowDwords();
+        for (IR::Inst* use : windowed) {
+            use->SetFlags<u32>(start | ReadConstWindowFlag);
+        }
     }
     for (const auto [src_off_dw, use] : *use_list) {
         if (pass_info.GetUsesAsPointer(use)) {
@@ -1420,34 +1546,3 @@ void FlattenExtendedUserdataPass(IR::Program& program) {
 }
 
 } // namespace Shader::Optimization
-
-#ifndef ARCH_X86_64
-// android port: the uc3 walker hooks on hosts where the walker is SRT bytecode (gow3_android's
-// RunSrtProgram). The pointer loader and the GPU-written leaf fixup are not applied yet: the
-// bytecode reads the tables in place, as gow3_android does for God of War III.
-namespace Shader {
-
-void SetSrtWalkerHooks(PFN_SrtLoadPtr, PFN_SrtFixup, PFN_SrtReadDword) {}
-
-void SrtReadDword(u64 src, u32* out) {
-    std::memcpy(out, reinterpret_cast<const void*>(src), sizeof(u32));
-}
-
-bool SrtWalkerSyncAllowed() {
-    return true;
-}
-
-bool DecodeSrtWalkerLoad(const void*, SrtWalkerLoad&) {
-    return false;
-}
-
-void RunSrtWalker(PFN_SrtWalker walker, const u32* user_data, u32* flat, size_t, bool,
-                  std::vector<SrtGpuLeaf>* leaves) {
-    if (leaves) {
-        leaves->clear();
-    }
-    walker(user_data, flat);
-}
-
-} // namespace Shader
-#endif

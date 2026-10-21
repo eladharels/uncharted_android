@@ -13,9 +13,9 @@ runtime, the shadPS4-based renderer, audio, input) is native ARM64 code.
 
 | Game | Executable | Android |
 |---|---|---|
-| Uncharted: Drake's Fortune | `eboot.bin` | Playable |
-| Uncharted 2: Among Thieves | `big2-ps4_Shipping.elf` | Playable |
-| Uncharted 3: Drake's Deception | `big3-ps4_Shipping.elf` | Playable |
+| Uncharted: Drake's Fortune | `eboot.bin` | Boots, menus and cutscenes; gameplay rendering being fixed |
+| Uncharted 2: Among Thieves | `big2-ps4_Shipping.elf` | Boots, menus and cutscenes; gameplay rendering being fixed |
+| Uncharted 3: Drake's Deception | `big3-ps4_Shipping.elf` | Boots, menus and cutscenes; gameplay rendering being fixed |
 
 Tested on a Samsung Galaxy S24 Ultra (Snapdragon 8 Gen 3, Adreno 750, Android 16 / One UI) with
 dump CUSA02344 v01.00, the Mesa Turnip driver `v27.0.0-20261020-r4-8G2-OneUI`, a 30 FPS limit.

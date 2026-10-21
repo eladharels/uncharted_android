@@ -784,7 +784,8 @@ volatile uint64_t runtime_guest_rbp, runtime_guest_ret;
 static void fault(int sig, siginfo_t *info, void *context) {
     /* GPU page tracking (write-protected guest pages) is resolved first, except for a speculative
      * read, which gives up instead of waiting for the GPU thread (see vectored_fault). */
-    if (gpu_enabled && sig == SIGSEGV && !runtime_fault_recover && gow3gpu_handle_fault(context, info->si_addr)) return;
+    if (gpu_enabled && sig == SIGSEGV && (!runtime_fault_recover || runtime_fault_recover_gpu) &&
+        gow3gpu_handle_fault(context, info->si_addr)) return;
     /* Faults the guest CPU itself raises (JIT bookkeeping) are handled and resumed. */
     if (guest_cpu_handle_fault(sig, info, context)) return;
     /* A speculative guest memory read (runtime_memory.c) failed: resume its recovery point. */

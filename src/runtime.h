@@ -13,6 +13,10 @@ typedef gow3_jmp_buf sigjmp_buf;
 #endif
 /* Recovery point for speculative guest memory reads on this thread (probe.c fault handler). */
 extern __thread sigjmp_buf *runtime_fault_recover;
+/* Set with runtime_fault_recover by a reader that may wait for the GPU thread (the arm64 SRT
+ * walker on a GPU-side thread): GPU page tracking resolves its faults first, as for the x86-64
+ * walker, and only a fault it does not handle jumps to the recovery point. */
+extern __thread int runtime_fault_recover_gpu;
 /* Restarts the game (in-game settings menu, render resolution change). */
 void runtime_restart(void);
 /* The guest's calling convention for host functions it calls. Elsewhere than x86-64 the guest CPU
