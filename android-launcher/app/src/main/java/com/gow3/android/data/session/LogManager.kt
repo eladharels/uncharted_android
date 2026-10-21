@@ -39,7 +39,8 @@ internal class LogManager(private val activity: Activity) {
     companion object {
         /** 区别于 GameFolderManager 的 1001/1002、LosslessDllManager 的 1003 和 SaveManager 的 1004/1005。 */
         const val REQUEST_EXPORT = 1006
-        private const val DEFAULT_EXPORT_NAME = "Uncharted-Logs"
+        private const val PROFILE_CAP = 24 shl 20 // profile.txt: at most 24 MB in the export
+        val DEFAULT_EXPORT_NAME = "Uncharted-Logs"
     }
 
     /** 由 [launchExport] 设置，由 [onActivityResult] 消费。 */
@@ -127,6 +128,15 @@ internal class LogManager(private val activity: Activity) {
                 entries["logs/$name"] = text.toByteArray(Charsets.UTF_8)
                 notes += "$name: included (last ${LogArchive.LOG_CAP shr 20} MB)"
             }
+        }
+
+        // uncharted_android: the sampling profiler's output (GOW3_PROFILE; gpu/shim/gow3_profiler.cpp),
+        // addresses and thread names only, when the player ran a profiling session.
+        val profile = File(logs, "profile.txt")
+        if (profile.isFile && profile.length() > 0) {
+            val bytes = profile.readBytes()
+            entries["logs/profile.txt"] = if (bytes.size <= PROFILE_CAP) bytes else bytes.copyOfRange(0, PROFILE_CAP)
+            notes += "profile.txt: included (${bytes.size / 1024} KB" + (if (bytes.size > PROFILE_CAP) ", truncated" else "") + ")"
         }
 
         // gow3.ini 设置（剔除键名疑似敏感的键值对）。

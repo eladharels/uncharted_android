@@ -223,6 +223,21 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      # uncharted_android: the unstripped libraries of this build, for symbolizing the app's
+      # sampling profiler output (GOW3_PROFILE, tools/android/profile/symbolize.py).
+      - name: Upload symbols
+        id: s_upload_symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: uncharted-android-symbols-${{ github.sha }}
+          path: |
+            out/bionic/gpu/libgow3gpu.so
+            out/bionic/fex/libgow3cpu.so
+            out/bionic/bin/gow3-probe
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 9
+
       # uncharted_android: the failing build's error lines as check annotations, readable through
       # the checks API (the last log written is the step that failed).
       - name: Report build errors

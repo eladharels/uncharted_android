@@ -46,6 +46,9 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
 - Render resolution setting for the collection (native, 720p, 540p, 480p; default 540p)
   through ucndc's `GOW3_UC3_RES` patch: 20-30 FPS at 540p on a Galaxy S24 Ultra.
 
+- Sampling CPU profiler inside the game process (`GOW3_PROFILE`), its output in the log
+  export, CI's unstripped-symbols artifact and `tools/android/profile/symbolize.py`.
+
 ### Known gaps
 - See [docs/ANDROID_PORT.md](docs/ANDROID_PORT.md#known-gaps).
 

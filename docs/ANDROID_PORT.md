@@ -207,6 +207,16 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
 
 ## Debugging
 
+- **CPU profile on the phone**: `GOW3_PROFILE=1` in `uncharted-env.txt` (or
+  `start,interval,duration,hz` in seconds, default `30,30,6,1000`) runs a sampling profiler
+  inside the game process (`gpu/shim/gow3_profiler.cpp`): from 30 s after boot, every 30 s, it
+  samples the renderer's threads at 1 kHz and the others at 100 Hz for 6 s, following the
+  frame-pointer chains, and appends the window to `logs/profile.txt` (thread list, stacks with
+  counts, memory map, FPS of the window). The log export includes the file. On a PC,
+  `tools/android/profile/symbolize.py profile.txt --symbols DIR` prints per-thread self and
+  inclusive reports; DIR is CI's `uncharted-android-symbols-<sha>` artifact of the same build
+  (unstripped `libgow3gpu.so`, `libgow3cpu.so`, `gow3-probe`). Addresses in the Vulkan driver
+  or libc come out as library+offset.
 - `uncharted-env.txt` in the game folder overrides runtime options without a new APK: one
   `GOW3_NAME=value` per line (an empty value unsets it, `#` starts a comment). Applied after the
   game's own options in `UnchartedGames.kt`; each applied line is echoed at the top of

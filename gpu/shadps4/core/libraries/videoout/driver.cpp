@@ -556,6 +556,7 @@ void VideoOutDriver::Flip(const Request& req) {
         last_image_bytes = image_bytes;
         last_buffer_bytes = buffer_bytes;
         ++frames;
+        Gow3Stats::flips.fetch_add(1, std::memory_order_relaxed);
         const double window = std::chrono::duration<double>(now - window_start).count();
         if (window >= 5.0) {
             const u32 compiles = Vulkan::g_gow3_compiles.exchange(0);
