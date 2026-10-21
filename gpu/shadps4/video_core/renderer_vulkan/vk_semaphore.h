@@ -40,8 +40,11 @@ public:
         return semaphore.get();
     }
 
-    /// Refresh the known GPU tick
-    void Refresh();
+    /// Refresh the known GPU tick. uncharted_android: the query is an ioctl (on Turnip's KGSL
+    /// backend one per pending submission of the emulated timeline), so calls closer together
+    /// than GOW3_SEM_POLL_US (default 100 us on Android, 0 elsewhere) reuse the last value
+    /// unless `force` (after a wait).
+    void Refresh(bool force = false);
 
     /// Waits for a tick to be hit on the GPU
     void Wait(u64 tick);
@@ -59,6 +62,8 @@ protected:
     std::atomic<u64> gpu_tick{0};     ///< Current known GPU tick.
     std::atomic<u64> current_tick{1}; ///< Current logical tick.
     const char* name;
+    std::atomic<u64> last_query_ns{0};
+    std::atomic<u64> stat_queries{0}, stat_query_ns{0}, stat_skipped{0}, stat_window_ns{0};
 };
 
 } // namespace Vulkan

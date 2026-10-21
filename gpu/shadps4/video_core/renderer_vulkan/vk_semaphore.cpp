@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <limits>
 #include <mutex>
 #include <vector>
@@ -81,7 +82,64 @@ void Semaphore::SettleAll(u32 timeout_ms) {
     std::fflush(stdout);
 }
 
-void Semaphore::Refresh() {
+namespace {
+u64 SteadyNs() {
+    return u64(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                   std::chrono::steady_clock::now().time_since_epoch())
+                   .count());
+}
+u64 PollIntervalNs() {
+    static const u64 ns = [] {
+        if (const char* env = std::getenv("GOW3_SEM_POLL_US")) {
+            return u64(std::strtoull(env, nullptr, 10)) * 1000;
+        }
+#ifdef __ANDROID__
+        return u64(100'000);
+#else
+        return u64(0);
+#endif
+    }();
+    return ns;
+}
+} // namespace
+
+void Semaphore::Refresh(bool force) {
+    const u64 start = SteadyNs();
+    const u64 interval = PollIntervalNs();
+    if (!force && interval != 0 &&
+        start - last_query_ns.load(std::memory_order_relaxed) < interval) {
+        stat_skipped.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    last_query_ns.store(start, std::memory_order_relaxed);
+    // uncharted_android (GOW3_FRAME_STATS): what the queries cost, every 2 s per semaphore.
+    struct Account {
+        Semaphore* sem;
+        u64 start;
+        ~Account() {
+            const u64 end = SteadyNs();
+            sem->stat_queries.fetch_add(1, std::memory_order_relaxed);
+            sem->stat_query_ns.fetch_add(end - start, std::memory_order_relaxed);
+            u64 window = sem->stat_window_ns.load(std::memory_order_relaxed);
+            if (window == 0) {
+                sem->stat_window_ns.compare_exchange_strong(window, end);
+                return;
+            }
+            if (end - window < 2'000'000'000ull ||
+                !sem->stat_window_ns.compare_exchange_strong(window, end)) {
+                return;
+            }
+            static const bool stats = std::getenv("GOW3_FRAME_STATS") != nullptr;
+            const u64 queries = sem->stat_queries.exchange(0);
+            const u64 ns = sem->stat_query_ns.exchange(0);
+            const u64 skipped = sem->stat_skipped.exchange(0);
+            if (stats) {
+                const double secs = (end - window) / 1e9;
+                std::printf("Semaphore %s: %.0f queries/s, %.1f ms/s querying, %.0f reused/s\n",
+                            sem->name, queries / secs, ns / 1e6 / secs, skipped / secs);
+            }
+        }
+    } account{this, start};
     u64 this_tick{};
     u64 counter{};
     do {
@@ -112,7 +170,7 @@ bool Semaphore::WaitFor(u64 tick, u64 timeout_ns) {
         Breadcrumbs::ReportDeviceLost("waiting for a submission");
         ASSERT_MSG(false, "Device lost while waiting for a submission");
     }
-    Refresh();
+    Refresh(true);
     return result == vk::Result::eSuccess;
 }
 
@@ -148,7 +206,7 @@ void Semaphore::Wait(u64 tick) {
             std::fflush(stdout);
         }
     }
-    Refresh();
+    Refresh(true);
 }
 
 } // namespace Vulkan
