@@ -165,9 +165,16 @@ own. `docs/QUICKSTART.md` (from gow3_android) has more detail on the host depend
 
 ## Known gaps
 
-- Performance: 20-30 FPS at 540p on a Galaxy S24 Ultra (30 FPS limit), 12-15 at 1080p. What
-  remains is the game threads waiting for GPU readbacks (`uc3 readbacks: ... waited by faulting
-  threads` in the log) and the GPU itself.
+- Performance: 20-30 FPS at 540p on a Galaxy S24 Ultra (30 FPS limit), 12-15 at 1080p. At
+  540p the limit is the two renderer threads with Uncharted 1's 2,000-3,800 draws per frame
+  (`GOW3_STAGEB_PROFILE=1`, boat section): the recording thread spends 8.5-9 µs per draw
+  (binding 3.3 µs, of which textures 1.1 and buffers 0.6; begin 0.6; inputs 0.7; the rest in
+  the Vulkan calls) plus ~84 µs per recorded task (mostly the ~760 submissions/s, 630 of them
+  eager), and the command processor 9.5 µs per draw (pipeline check 4.4, of which the SRT walk
+  3.65; post 3.9) while waiting for the recording thread 40% of the time. Readback settings
+  (`GOW3_STALE_READBACK`, `GOW3_READBACKS=1`, `GOW3_PREP_TRUST_A1`) no longer change the
+  frame rate there, and `GOW3_TEXTURE_HELPER=1` makes it worse. Next: profile the recording
+  thread on the device (simpleperf) and cut the per-draw cost.
 - At 720p (1280x720) the controller-hint panel at the bottom right is drawn as a solid black box
   with a blocky corner (its blurred backdrop); 1080p and 540p are fine.
 - A separate update folder is not overlaid for the Uncharted executables: merge the update into
