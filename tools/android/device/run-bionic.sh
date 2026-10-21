@@ -63,6 +63,29 @@ if [ -f "$launch_env" ]; then
         [ -n "$value" ] && export "$key=$value"
     done
     [ -n "$(derived GOW3_UC_GAME)" ] && echo "Uncharted: $(derived GOW3_UC_GAME) ($GOW3_EXECUTABLE)"
+    # uncharted_android: player overrides for experiments, without a new APK: uncharted-env.txt
+    # in the game folder (a file manager can edit it), one GOW3_NAME=value per line; an empty
+    # value unsets the option; lines starting with # are ignored. Applied after the game's own
+    # options; the start script's screen, driver and frame settings below still win.
+    uc_env_file="${GOW3_GAME_DIR%/}/uncharted-env.txt"
+    if [ -n "${GOW3_GAME_DIR:-}" ] && [ -f "$uc_env_file" ]; then
+        while IFS= read -r line || [ -n "$line" ]; do
+            line=$(printf '%s' "$line" | tr -d '\r')
+            case $line in ''|'#'*) continue ;; esac
+            key=${line%%=*}
+            value=${line#*=}
+            case $key in GOW3_[A-Z0-9_]*) ;; *) echo "uncharted-env.txt: ignored: $line"; continue ;; esac
+            case $key in *[!A-Z0-9_]*) echo "uncharted-env.txt: ignored: $line"; continue ;; esac
+            case $value in *[!A-Za-z0-9._,:+-]*) echo "uncharted-env.txt: ignored: $line"; continue ;; esac
+            if [ -z "$value" ]; then
+                unset "$key"
+                echo "uncharted-env.txt: $key unset"
+            else
+                export "$key=$value"
+                echo "uncharted-env.txt: $key=$value"
+            fi
+        done < "$uc_env_file"
+    fi
     echo "Derived patches: ${GOW3_PATCH_STATUS:-unknown}; ${GOW3_PATCHES:-none}; DMEM ${GOW3_DMEM_MB:-?}MiB, vblank ${GOW3_VBLANK_HZ:-?}Hz"
 fi
 setting() { sed -n "s/^$1=//p" "$GOW3_CONFIG" 2>/dev/null | tail -n 1; }

@@ -78,9 +78,15 @@ thread's entry), which is where Uncharted 3 switches.
 - Queue setup keeps gow3_android's sparse-binding queue and the Uncharted readback side queue
   (`GOW3_READBACK_SIDEQ`).
 - The SRT walker (`flatten_extended_userdata_pass.cpp`, `srt.h`): x86-64 keeps the PC port's
-  machine-code walker with the Uncharted context; arm64 uses gow3_android's portable bytecode.
-  The Uncharted walker extensions (pointer loads through the backing view, GPU-written leaves,
-  ReadConst windows) are not in the bytecode yet; the games run without them so far.
+  machine-code walker; arm64 uses gow3_android's portable bytecode, extended with the Uncharted
+  walker context (pointer loads through the backing view, guest sources for the GPU-written
+  fixup) and ReadConst windows (`OpCopyWindow`). A faulting load reads as zero for one walk
+  only, and GPU page tracking resolves the walker's faults first (`runtime_fault_recover_gpu`).
+  Without this, gameplay rendered black.
+- Presentation: the Uncharted games skip God of War III's scaled session (`GOW3_RENDER_RES`,
+  UI composition at the output size), which hid the scene behind the HUD. They output
+  1920x1080 as on the PC and the presenter scales it to the screen (`run-bionic.sh`;
+  `GOW3_UC_SCALED=1` brings the scaled session back).
 - `IsExecuteError` for arm64 (instruction aborts), duplicate declarations from the merge removed.
 
 ### Runtime
@@ -144,7 +150,9 @@ own. `docs/QUICKSTART.md` (from gow3_android) has more detail on the host depend
 
 ## Known gaps
 
-- The Uncharted SRT walker extensions on arm64 (see Renderer).
+- Performance: gameplay runs at about 15 FPS on a Galaxy S24 Ultra, CPU-bound in the GPU
+  command thread (about 40 µs per draw, 1,000-1,800 draws per frame) and in game threads
+  waiting for GPU readbacks.
 - `GOW3_EOP_TICK_WAIT` and `GOW3_JOB_SPIN/SLEEP` on Android.
 - A separate update folder is not overlaid for the Uncharted executables: merge the update into
   the base dump.
@@ -152,6 +160,11 @@ own. `docs/QUICKSTART.md` (from gow3_android) has more detail on the host depend
   the God of War III port; renaming them would make upstream merges harder.
 
 ## Debugging
+
+- `uncharted-env.txt` in the game folder overrides runtime options without a new APK: one
+  `GOW3_NAME=value` per line (an empty value unsets it, `#` starts a comment). Applied after the
+  game's own options in `UnchartedGames.kt`; each applied line is echoed at the top of
+  `android-game.log`.
 
 - In-app: **About → Export logs** (`android-game.log`, the previous run's log, logcat).
 - `GOW3_FEX_LOG=1` prints FEXCore's own log; `TU_DEBUG` options go to Turnip (see the Mesa

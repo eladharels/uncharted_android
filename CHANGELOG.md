@@ -25,6 +25,8 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
 - Android build: fmt 11.2.0, NDK 29 in CI, job counts sized to the machine, host header packages
   staged automatically, host compiler flags kept away from the NDK.
 
+- `uncharted-env.txt` in the game folder: runtime option overrides for experiments.
+
 ### Fixed
 - Black screen once gameplay starts (audio playing, menu remnants frozen on screen): the arm64
   SRT walker now follows table pointers through the unprotected backing view with the uc3
