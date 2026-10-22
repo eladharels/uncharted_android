@@ -106,9 +106,16 @@ void GpuProfiler::Print() {
     for (const auto& [key, total] : sorted) {
         sum += total.ms;
     }
-    std::printf("GPU profile: %.2f ms/frame over %llu frames (%llu dropped, GPU too far behind), "
+    // uncharted_android: the busy time apart from the idle segments, and the submissions per
+    // frame (one idle segment each), so a phone's GPU load reads off the first line.
+    const auto idle_it = totals.find(IdleKey);
+    const double idle = idle_it != totals.end() ? idle_it->second.ms : 0.0;
+    const double submissions = idle_it != totals.end() ? double(idle_it->second.segments) : 0.0;
+    std::printf("GPU profile: %.2f ms/frame busy, %.2f ms/frame idle between %.1f submissions, "
+                "%.2f ms/frame span over %llu frames (%llu dropped, GPU too far behind), "
                 "%zu labels\n",
-                sum / frames, static_cast<unsigned long long>(frames),
+                (sum - idle) / frames, idle / frames, submissions / frames, sum / frames,
+                static_cast<unsigned long long>(frames),
                 static_cast<unsigned long long>(std::exchange(dropped, 0)), sorted.size());
     for (size_t i = 0; i < std::min<size_t>(sorted.size(), 30); ++i) {
         const auto& [key, total] = sorted[i];

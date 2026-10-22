@@ -55,6 +55,10 @@ public:
     /// At the display pass: closes the frame's last segment, reads an old frame's results.
     void BeginFrame();
 
+    /// The segment from a submission's end to the next submission's first timestamp: the GPU
+    /// waiting for the CPU. uncharted_android: reported apart from the busy time.
+    static constexpr u64 IdleKey = 0x5B317ull;
+
 private:
     GpuProfiler(const Instance& instance, Scheduler& scheduler);
     void WriteTimestamp(u64 key);

@@ -64,9 +64,11 @@ if [ -f "$launch_env" ]; then
     done
     [ -n "$(derived GOW3_UC_GAME)" ] && echo "Uncharted: $(derived GOW3_UC_GAME) ($GOW3_EXECUTABLE)"
     # uncharted_android: player overrides for experiments, without a new APK: uncharted-env.txt
-    # in the game folder (a file manager can edit it), one GOW3_NAME=value per line; an empty
+    # in the game folder (a file manager can edit it), one NAME=value per line; an empty
     # value unsets the option; lines starting with # are ignored. Applied after the game's own
-    # options; the start script's screen, driver and frame settings below still win.
+    # options; the start script's screen, driver and frame settings below still win. Besides
+    # the port's GOW3_* options the Turnip driver's own are accepted: TU_DEBUG (e.g. sysmem,
+    # gmem, nolrz, noubwc), FD_DEV_FEATURES, IR3_SHADER_DEBUG and MESA_* (the shader cache).
     uc_env_file="${GOW3_GAME_DIR%/}/uncharted-env.txt"
     if [ -n "${GOW3_GAME_DIR:-}" ] && [ -f "$uc_env_file" ]; then
         while IFS= read -r line || [ -n "$line" ]; do
@@ -74,9 +76,11 @@ if [ -f "$launch_env" ]; then
             case $line in ''|'#'*) continue ;; esac
             key=${line%%=*}
             value=${line#*=}
-            case $key in GOW3_[A-Z0-9_]*) ;; *) echo "uncharted-env.txt: ignored: $line"; continue ;; esac
+            case $key in GOW3_[A-Z0-9_]*|TU_[A-Z0-9_]*|FD_[A-Z0-9_]*|IR3_[A-Z0-9_]*|MESA_[A-Z0-9_]*) ;;
+                *) echo "uncharted-env.txt: ignored: $line"; continue ;; esac
             case $key in *[!A-Z0-9_]*) echo "uncharted-env.txt: ignored: $line"; continue ;; esac
-            case $value in *[!A-Za-z0-9._,:+-]*) echo "uncharted-env.txt: ignored: $line"; continue ;; esac
+            # FD_DEV_FEATURES=name=1 carries '=' in its value; MESA_SHADER_CACHE_DIR a path.
+            case $value in *[!A-Za-z0-9._,:+=/-]*) echo "uncharted-env.txt: ignored: $line"; continue ;; esac
             if [ -z "$value" ]; then
                 unset "$key"
                 echo "uncharted-env.txt: $key unset"

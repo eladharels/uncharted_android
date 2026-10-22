@@ -362,6 +362,7 @@ void Scheduler::SyncRecording() {
 
 void Scheduler::RecorderThread(std::stop_token stoken) {
     Common::SetCurrentThreadName("gow3:VkRecorder");
+    Gow3Threads::PreferBigCores("gow3:VkRecorder");
     while (true) {
         // Spin briefly before sleeping: the next chunk usually follows within microseconds,
         // and a sleeping recorder costs the GPU thread a wake-up syscall per kick. With few
@@ -621,7 +622,8 @@ void Scheduler::SubmitExecution(SubmitInfo& info, bool async) {
     step.Mark(1);
     if (auto* profiler = GpuProfiler::Get(); profiler && profiler->Records(this)) {
         // Until the next submission's first timestamp: mostly the GPU waiting for it.
-        profiler->Mark(0x5B317ull, [] { return std::string{"(between submissions: GPU idle)"}; });
+        profiler->Mark(GpuProfiler::IdleKey,
+                       [] { return std::string{"(between submissions: GPU idle)"}; });
     }
     if (deferred) {
         if (IsRecordingDeferred()) {
