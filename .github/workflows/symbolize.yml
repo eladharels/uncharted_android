@@ -52,6 +52,12 @@ jobs:
           sym=$(command -v llvm-symbolizer-18 || command -v llvm-symbolizer || true)
           if [ -z "$sym" ]; then sudo apt-get update -qq && sudo apt-get install -y -qq llvm >/dev/null; sym=$(command -v llvm-symbolizer); fi
           export LLVM_SYMBOLIZER="$sym"
+          # The libraries' layout, for checking the address translation.
+          {
+            for lib in symbols/*; do echo "== $lib"; llvm-readelf-18 -l "$lib" 2>/dev/null | grep -A1 "LOAD" || readelf -lW "$lib" | grep LOAD; done
+            echo "== symbols of interest"
+            llvm-nm-18 -C --defined-only symbols/libgow3gpu.so 2>/dev/null | grep -E " (T|t) " | grep -E "DrawPipe::Run|Drain|poll_with_backoff|RecorderThread|Liverpool::Process|WaitHostCopies|RunDrawPacket|DispatchDirect|GpuCommandProcessor|Rasterizer::Draw\(" | head -40
+          } > profiles/layout.txt 2>&1 || true
           echo "${{ steps.find.outputs.dirs }}" | while read -r dir; do
             [ -n "$dir" ] || continue
             python3 tools/android/profile/symbolize.py "$dir/profile.txt" --symbols symbols --top 60 --stacks 12 \
