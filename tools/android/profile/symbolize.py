@@ -54,7 +54,9 @@ def parse(path):
                 window.maps.append(Mapping(int(lo, 16), int(hi, 16), int(parts[2], 16), parts[5] if len(parts) > 5 else ""))
             elif kind == "T" and window is not None:
                 parts = rest.split()
-                thread = (int(parts[0]), parts[1], int(parts[2]), int(parts[3]), parts[4] == "hot", [])
+                # The name may hold spaces (a guest thread's): the last three fields are fixed.
+                thread = (int(parts[0]), " ".join(parts[1:-3]) or "?", int(parts[-3]), int(parts[-2]),
+                          parts[-1] == "hot", [])
                 window.threads.append(thread)
             elif kind == "S" and thread is not None:
                 parts = rest.split()

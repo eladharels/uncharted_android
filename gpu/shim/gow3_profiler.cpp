@@ -270,7 +270,9 @@ void WriteWindow(FILE* out, unsigned index, uint64_t started_ms, double seconds,
         if (t.samples == 0 && t.failed == 0) {
             continue;
         }
-        std::fprintf(out, "T %d %s %u %u %s\n", t.info.tid, t.info.name.empty() ? "?" : t.info.name.c_str(),
+        std::string name = t.info.name.empty() ? "?" : t.info.name;
+        std::replace(name.begin(), name.end(), ' ', '_');
+        std::fprintf(out, "T %d %s %u %u %s\n", t.info.tid, name.c_str(),
                      t.samples, t.failed, t.info.hot ? "hot" : "cold");
         std::vector<std::pair<const std::vector<uint64_t>*, uint32_t>> sorted;
         sorted.reserve(t.stacks.size());
