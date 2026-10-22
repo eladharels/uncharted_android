@@ -1,0 +1,68 @@
+# uncharted_android: symbolizes a profile.txt from the app's sampling profiler (GOW3_PROFILE)
+# with the unstripped libraries of the build that produced it, on a `profile/*` branch:
+#   profiles/<name>/profile.txt   the exported file
+#   profiles/<name>/run.txt       the build's workflow run id (the "symbols" artifact's run)
+# and commits profiles/<name>/report.txt back to the branch. For when the artifact cannot be
+# downloaded where the analysis happens.
+name: Symbolize a profile
+
+on:
+  push:
+    branches: ['profile/**']
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  symbolize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find the profiles
+        id: find
+        run: |
+          set -e
+          dirs=$(find profiles -name profile.txt -printf '%h\n' | sort -u)
+          test -n "$dirs" || { echo 'no profiles/*/profile.txt' >&2; exit 1; }
+          echo "dirs<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$dirs" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          run=$(cat $(echo "$dirs" | head -n 1)/run.txt | tr -d ' \n')
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          sha=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$run" --jq .head_sha)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Download the symbols of that build
+        uses: actions/download-artifact@v4
+        with:
+          name: uncharted-android-symbols-${{ steps.find.outputs.sha }}
+          run-id: ${{ steps.find.outputs.run }}
+          github-token: ${{ github.token }}
+          path: symbols
+
+      - name: Symbolize
+        run: |
+          set -e
+          find symbols -type f -exec mv -f {} symbols/ \; 2>/dev/null || true
+          ls -la symbols
+          sym=$(command -v llvm-symbolizer-18 || command -v llvm-symbolizer || true)
+          if [ -z "$sym" ]; then sudo apt-get update -qq && sudo apt-get install -y -qq llvm >/dev/null; sym=$(command -v llvm-symbolizer); fi
+          export LLVM_SYMBOLIZER="$sym"
+          echo "${{ steps.find.outputs.dirs }}" | while read -r dir; do
+            [ -n "$dir" ] || continue
+            python3 tools/android/profile/symbolize.py "$dir/profile.txt" --symbols symbols --top 60 \
+              > "$dir/report.txt" 2> "$dir/report.err" || true
+            ls -la "$dir"
+          done
+
+      - name: Commit the reports
+        run: |
+          git config user.name 'github-actions'
+          git config user.email 'github-actions@users.noreply.github.com'
+          git add profiles
+          git commit -m "profiles: symbolized reports [skip ci]" || exit 0
+          git push
