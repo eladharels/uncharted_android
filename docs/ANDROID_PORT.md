@@ -198,10 +198,16 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    quanta of the wait loops between them. Changed: GPU-only HLE copies are handed over without
    a drain (`ScalarCopyHleWritesGuest`), the end-of-pipe wait is skipped when nothing is
    downloading, the drain and `WaitHostCopies` wake through futexes. Measured without
-   gain: `GOW3_HLE_INORDER_GFX=1` (17 FPS against 20; most small copies went in order, the
-   large ones still drained). Next: the guest-copy drains (an in-order copy that stage A does
-   not treat as a pending write, or the HLE's guest copy done on stage B) and the remaining
-   polled waits (ring copier, deferred signals).
+   gain: `GOW3_HLE_INORDER_GFX=1` alone (its in-order copy waited for the Vulkan recording
+   thread at every copy). With `GOW3_HLE_PRECISE_WAIT=1` that wait is conditional, and both
+   are on: the typical frame went from 50 ms to 33 ms (the 30 FPS cap); the heavy frames
+   (2,000+ draws) still take 50-60 ms. Stage A's remaining waits (35% of its time): the VO
+   label wait (12.5%, the frame cap and the flip), `OnSubmit`'s per-frame tick (6%), readback
+   commands from faulting game threads (`ProcessCommands`, 7%), in-order copy fallbacks
+   (`pending`, 7%). The profiler's stacks are reliable from build 3fc77f7 on (PAC bits).
+   The frame time still scales with the draw count at ~15 µs per draw (command thread
+   ~10 µs, draw recording ~8.5 µs, Vulkan recording unmeasured); cutting that is the next
+   lever, with a profile of the busy samples of those three threads.
 1. **Uncharted 1, recording thread (stage B), 8.5-9 µs per draw.** Profile it on the device
    (a self-profiling mode: bundle simpleperf from the NDK, record a few seconds from the
    overlay, export with the logs) and cut the per-draw cost: resource binding (3.3 µs),
