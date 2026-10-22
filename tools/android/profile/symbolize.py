@@ -165,29 +165,40 @@ class Symbolizer:
         return out
 
 
+WAIT_HINTS = ("libc.so", "libc++_shared.so", "[vdso]")
+
+
 def report(window, thread, symbolizer, top):
     tid, name, samples, failed, hot, stacks = thread
     if samples == 0:
         return
+    # A return address points after the call: the call itself (addr - 1) names the right line
+    # and inlined frame. The leaf is sampled where it is.
     addrs = set()
     for _, frames in stacks:
-        addrs.update(frames)
+        addrs.add(frames[0])
+        addrs.update(f - 1 for f in frames[1:])
     names = symbolizer.resolve(window.maps, addrs)
     self_counts = collections.Counter()
     incl_counts = collections.Counter()
     caller_counts = collections.Counter()
+    wait_counts = collections.Counter()
     for count, frames in stacks:
         if not frames:
             continue
-        self_counts[names[frames[0]]] += count
+        chain = [names[frames[0]]] + [names[f - 1] for f in frames[1:]]
+        self_counts[chain[0]] += count
         seen = set()
-        for f in frames:
-            n = names[f]
+        for n in chain:
             if n not in seen:
                 seen.add(n)
                 incl_counts[n] += count
-        if len(frames) > 1:
-            caller_counts[(names[frames[0]], names[frames[1]])] += count
+        if len(chain) > 1:
+            caller_counts[(chain[0], chain[1])] += count
+        # A sample inside libc/libc++ (a syscall, a sleep, a lock): the first frame of ours.
+        if chain[0].startswith(WAIT_HINTS):
+            ours = next((n for n in chain if not n.startswith(WAIT_HINTS)), "?")
+            wait_counts[ours] += count
     print("== window %d (t=%.0fs, %.1f FPS)  thread %d %s: %d samples, %d failed, %s"
           % (window.index, window.start_ms / 1000.0, window.fps, tid, name, samples, failed, "hot" if hot else "cold"))
     print("-- self (where the thread was)")
@@ -199,6 +210,10 @@ def report(window, thread, symbolizer, top):
     print("-- leaf <- caller")
     for (leaf, caller), c in caller_counts.most_common(top // 2):
         print("  %5.1f%%  %s <- %s" % (100.0 * c / samples, leaf, caller))
+    if wait_counts:
+        print("-- in libc/libc++ (waits, syscalls, locks), by the first frame of ours")
+        for n, c in wait_counts.most_common(top // 2):
+            print("  %5.1f%%  %s" % (100.0 * c / samples, n))
     print()
 
 
