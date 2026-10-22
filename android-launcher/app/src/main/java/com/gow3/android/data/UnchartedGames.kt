@@ -33,6 +33,13 @@ object UnchartedGames {
         // They spin 100 times and block, in gameplay too, as the PC port runs Uncharted 3 (the
         // on-device profile shows them blocked in the futex most of the time, as intended).
         "GOW3_JOB_SPIN" to "100", "GOW3_JOB_SLEEP" to "1",
+        // A scalar copy on the graphics queue is written by the draw recording thread in order
+        // instead of draining the draw pipe first (ucndc's GOW3_HLE_INORDER_GFX, off on the PC),
+        // and its wait for the Vulkan recording thread happens only while a deferred read of the
+        // destination is pending (GOW3_HLE_PRECISE_WAIT). On the phone the drains at those
+        // copies were a sixth of the command thread's time after the GPU-only ones stopped
+        // draining; the pipe runs dry about seven times per frame otherwise.
+        "GOW3_HLE_INORDER_GFX" to "1", "GOW3_HLE_PRECISE_WAIT" to "1",
     )
 
     val GAMES = listOf(

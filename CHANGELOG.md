@@ -56,6 +56,10 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
   with nothing to download; stage A's drain and `WaitHostCopies` wake through futexes on
   arm64 instead of polling with sleeps.
 
+- Scalar copies on the graphics queue are written in order by the draw recording thread
+  (`GOW3_HLE_INORDER_GFX`), waiting for the Vulkan recording thread only while a deferred read
+  of the destination is pending (`GOW3_HLE_PRECISE_WAIT`), instead of draining the draw pipe.
+
 ### Known gaps
 - See [docs/ANDROID_PORT.md](docs/ANDROID_PORT.md#known-gaps).
 

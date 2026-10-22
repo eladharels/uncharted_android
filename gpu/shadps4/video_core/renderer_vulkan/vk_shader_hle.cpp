@@ -582,7 +582,13 @@ void RunInOrderCopy(Rasterizer& rasterizer, const u8* data) {
     const u8* bytes = data + sizeof(InOrderCopy);
     // As RunWriteData: copies deferred to the recording thread precede the write; the write
     // itself goes through the page tracker (a protected page faults and invalidates).
-    rasterizer.WaitHostCopies();
+    // uncharted_android: with GOW3_HLE_PRECISE_WAIT=1 only while a deferred read of the
+    // destination is pending (R.8.5's rule, as CopyGuestThroughBacking applies it): on a phone
+    // the wait for the Vulkan recording thread at every in-order copy cost what the drain had.
+    if (!VideoCore::BufferCache::PreciseHostReadWait() ||
+        VideoCore::BufferCache::HasPendingHostReads(copy.dst, copy.size)) {
+        rasterizer.WaitHostCopies();
+    }
     std::memcpy(reinterpret_cast<void*>(copy.dst), bytes, copy.size);
     SrtNoteWrite(copy.dst, copy.size, SrtOriginRewrite);
 }
