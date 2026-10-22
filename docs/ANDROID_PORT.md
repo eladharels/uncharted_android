@@ -238,11 +238,22 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    falling from 1.9 to 1.5 over a session. Whether that is a thermal cap (scaling_max_freq
    lowered) or the governor's choice for a bursty load (cur below an untouched max) decides
    the remedy, so the line now also prints the caps when they sit below the hardware
-   maximum, the GPU clock (kgsl) and the process's CPU use in cores. The earlier long
-   sessions (9-12 µs per draw throughout) would all have been throttled ones. If heat: less
-   CPU burnt in spin and yield loops and speculative helpers (`GOW3_PREP_WORKERS=0` is the
-   first test: four SCHED_IDLE workers soak up every idle core). If the governor: a
-   performance-hint session (ADPF) for the renderer threads.
+   maximum, the GPU clock (kgsl) and the process's CPU use in cores. **Settled (Uncharted 1,
+   5-minute session on a warm phone):** it is a cap. `scaling_max_freq` sat at 2.4-2.6 GHz
+   from the start (the phone's game/thermal policy; the hardware allows 3.1-3.4) and dropped
+   to 1.5 GHz on the performance cores and 1.6 on the prime core 40 s into gameplay, where
+   it stayed; the per-draw cost on the command thread went from 5.7-7.3 µs at 2.4 GHz to
+   7.3-12 µs at 1.5. The process used 4.2-5.1 cores throughout, 1.2-2.1 of them kernel
+   time: the stages' wait loops. libc++'s `std::atomic::wait` polls with `sched_yield` for
+   60 µs before it sleeps, and the drain, stage B's idle wait, the host-copy wait and the
+   ring copier's waits all went through it thousands of times per second; they now wait in
+   the futex directly after a short spin (`common/futex_wait.h`). The remaining levers are
+   the same kind: the backoff's yield phase (`GOW3_YIELD_US`, default 20), stage B's 50 µs
+   spin (`GOW3_PIPE_SPIN_US`), the four SCHED_IDLE draw-preparation workers that soak up
+   every idle core (`GOW3_PREP_WORKERS=0`), and the ~2,000 `mprotect` calls per second of
+   the precise readbacks (each a TLB shootdown across the cores). A CPU profile
+   (`GOW3_PROFILE=1`) with the clock line says where the 4-5 cores go. The earlier long
+   sessions (9-12 µs per draw throughout) were all capped ones.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.
@@ -293,6 +304,11 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
   (`scaling_cur_freq`); `capped to ... of ...` when the allowed maximum sits below the
   hardware's (thermal management); the GPU clock where kgsl exposes it; and the process's
   CPU use over the window in cores (user and kernel).
+- Wait loops on the phone: `GOW3_SPIN_US` (20), `GOW3_YIELD_US` (20) and `GOW3_WAIT_SLEEP_US`
+  (50) are the phases of the generic backoff (`common/spin_wait.h`); `GOW3_PIPE_SPIN_US` (50)
+  stage B's spin before it sleeps; `GOW3_PREP_WORKERS` (4) the SCHED_IDLE draw-preparation
+  workers. The stage-to-stage waits (drain, host copies, ring copier) sleep in the futex
+  directly (`common/futex_wait.h`), with no polling to tune.
 - `GOW3_BIG_CORES` (default 1 for Uncharted): the command processor, the draw recording,
   Vulkan recording and ring copy threads are kept on the cores whose maximum clock is at
   least 80% of the fastest core's (`Big cores:` line in the log). `2` extends it to the whole

@@ -13,6 +13,7 @@
 
 #include <cstdlib>
 #include "gow3_threads.h"
+#include "common/futex_wait.h"
 
 #include <array>
 #include <atomic>
@@ -46,7 +47,7 @@ public:
         thread.request_stop();
         published.fetch_add(0, std::memory_order_seq_cst);
         wake.fetch_add(1, std::memory_order_seq_cst);
-        wake.notify_one();
+        Common::FutexWakeOne(wake);
     }
 
     /// True on the draw recording thread.
@@ -89,7 +90,7 @@ public:
         ++packets;
         if (sleeping.load(std::memory_order_seq_cst)) {
             wake.fetch_add(1, std::memory_order_seq_cst);
-            wake.notify_one();
+            Common::FutexWakeOne(wake);
         }
     }
 
@@ -122,24 +123,16 @@ public:
         }
 #else
         // uncharted_android: a short spin, then a futex wait that stage B wakes when it
-        // advances (no polling: on a phone the sleep-based backoff added up to a frame's
-        // worth of latency over the drains of a frame).
-        for (u32 spins = 0;; ++spins) {
-            const u64 c = consumed.load(std::memory_order_seq_cst);
-            if (c == head) {
-                break;
-            }
+        // advances (Common::CounterWait: no polling, no sched_yield; on a phone the
+        // sleep-based backoff added up to a frame's worth of latency over the drains of a
+        // frame, and libc++'s atomic wait yielded for 60 us at every one).
+        for (u32 spins = 0; consumed.load(std::memory_order_seq_cst) != head; ++spins) {
             if (spins < 512) {
                 COMMON_CPU_RELAX();
                 continue;
             }
-            drain_waiting.store(1, std::memory_order_seq_cst);
-            if (consumed.load(std::memory_order_seq_cst) == head) {
-                drain_waiting.store(0, std::memory_order_seq_cst);
-                break;
-            }
-            consumed.wait(c, std::memory_order_seq_cst);
-            drain_waiting.store(0, std::memory_order_seq_cst);
+            drain_wait.Wait([&] { return consumed.load(std::memory_order_seq_cst) == head; });
+            break;
         }
 #endif
         const u64 waited = Common::FencedRDTSC() - start;
@@ -221,7 +214,7 @@ private:
                         sleeping.store(true, std::memory_order_seq_cst);
                         if (published.load(std::memory_order_seq_cst) == at &&
                             !stop.stop_requested()) {
-                            wake.wait(seen, std::memory_order_seq_cst);
+                            Common::FutexWait(wake, seen); // uncharted_android: no polling
                         }
                         sleeping.store(false, std::memory_order_relaxed);
                     }
@@ -249,9 +242,7 @@ private:
     /// Stage B: publishes its position and wakes a draining stage A (see Drain).
     void Consumed(u64 at) {
         consumed.store(at, std::memory_order_seq_cst);
-        if (drain_waiting.load(std::memory_order_seq_cst)) {
-            consumed.notify_all();
-        }
+        drain_wait.Signal();
     }
 
     static inline thread_local bool on_stage_b = false;
@@ -263,7 +254,7 @@ private:
     u32 pending_size = 0;
     alignas(64) std::atomic<u64> published{0};
     alignas(64) std::atomic<u64> consumed{0};
-    std::atomic<u32> drain_waiting{0}; ///< stage A waits on `consumed` (Drain)
+    Common::CounterWait drain_wait; ///< stage A waits on `consumed` (Drain)
     alignas(64) std::atomic<u32> wake{0};
     std::atomic<bool> sleeping{false};
     std::atomic<u32> stage_b_tid{0};

@@ -21,6 +21,7 @@
 #include <thread>
 #include "common/rdtsc.h"
 #include "gow3_threads.h"
+#include "common/futex_wait.h"
 #include "common/spin_wait.h"
 
 #include "common/thread.h"
@@ -73,7 +74,7 @@ public:
             threads[i].request_stop();
         }
         wake.fetch_add(1, std::memory_order_seq_cst);
-        wake.notify_all();
+        Common::FutexWakeAll(wake);
     }
 
     static bool Wanted() {
@@ -99,7 +100,7 @@ public:
                 // One wake per sleep: later pushes see woken until the thread sleeps again.
                 notifies.fetch_add(1, std::memory_order_relaxed);
                 wake.fetch_add(1, std::memory_order_seq_cst);
-                wake.notify_all();
+                Common::FutexWakeAll(wake);
             }
             return;
         }
@@ -111,7 +112,7 @@ public:
         enqueued.store(head, std::memory_order_seq_cst);
         if (sleeping.load(std::memory_order_seq_cst) != 0) {
             wake.fetch_add(1, std::memory_order_seq_cst);
-            wake.notify_all();
+            Common::FutexWakeAll(wake);
         }
     }
 
@@ -324,7 +325,7 @@ private:
                     wake_n &&
                 !stop.stop_requested()) {
                 sleeps.fetch_add(1, std::memory_order_relaxed);
-                wake.wait(seen, std::memory_order_seq_cst);
+                Common::FutexWait(wake, seen); // uncharted_android: no polling
             }
             sleeping.fetch_sub(1, std::memory_order_seq_cst);
         }
@@ -356,7 +357,7 @@ private:
                         sleeping.fetch_add(1, std::memory_order_seq_cst);
                         if (enqueued.load(std::memory_order_seq_cst) <= at &&
                             !stop.stop_requested()) {
-                            wake.wait(seen, std::memory_order_seq_cst);
+                            Common::FutexWait(wake, seen); // uncharted_android: no polling
                         }
                         sleeping.fetch_sub(1, std::memory_order_relaxed);
                     }

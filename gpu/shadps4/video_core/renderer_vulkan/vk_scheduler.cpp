@@ -286,13 +286,10 @@ void Scheduler::WaitHostCopies() {
             if (++spins < 512) {
                 COMMON_CPU_RELAX();
             } else {
-                const u64 done = host_copies_done.load(std::memory_order_seq_cst);
-                host_copies_waiting.store(1, std::memory_order_seq_cst);
-                if (host_copies_done.load(std::memory_order_seq_cst) == done &&
-                    done < host_copies_issued.load(std::memory_order_relaxed)) {
-                    host_copies_done.wait(done, std::memory_order_seq_cst);
-                }
-                host_copies_waiting.store(0, std::memory_order_seq_cst);
+                host_copies_wait.Wait([&] {
+                    return host_copies_done.load(std::memory_order_seq_cst) >=
+                           host_copies_issued.load(std::memory_order_relaxed);
+                });
             }
 #endif
             // uc3: a wait this long is a hang in the making; say what it waits for.

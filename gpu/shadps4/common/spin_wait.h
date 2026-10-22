@@ -20,8 +20,8 @@ namespace Common {
 /// same loop reached sched_yield after a few microseconds and spun on it for the rest of the
 /// wait. On a Snapdragon 8 Gen 3 that was 25-50 ms of kernel time per frame in the GPU thread
 /// alone and thousands of context switches, taken from the recording thread and the game's own
-/// threads. There the backoff spins for GOW3_SPIN_US (default 20 us), yields for as long again,
-/// and then sleeps GOW3_WAIT_SLEEP_US (default 50 us) per poll.
+/// threads. There the backoff spins for GOW3_SPIN_US (default 20 us), yields for GOW3_YIELD_US
+/// (default 20 us), and then sleeps GOW3_WAIT_SLEEP_US (default 50 us) per poll.
 class SpinWait {
 public:
     /// `yield_only`: on x86-64, sched_yield from the first poll (loops that did so before).
@@ -49,8 +49,10 @@ public:
             return;
         }
         if (phase == 1) {
-            std::this_thread::yield();
-            if (Clock::now() - start < SpinTime()) {
+            // Each yield is a syscall (kernel time, heat, on a phone); GOW3_YIELD_US bounds
+            // the phase, 0 skips it.
+            if (Clock::now() - start < YieldTime()) {
+                std::this_thread::yield();
                 return;
             }
             phase = 2;
@@ -78,6 +80,10 @@ private:
     }
     static std::chrono::microseconds SleepTime() {
         static const auto time = EnvMicros("GOW3_WAIT_SLEEP_US", 50);
+        return time;
+    }
+    static std::chrono::microseconds YieldTime() {
+        static const auto time = EnvMicros("GOW3_YIELD_US", 20);
         return time;
     }
 
