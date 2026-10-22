@@ -208,6 +208,21 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    The frame time still scales with the draw count at ~15 µs per draw (command thread
    ~10 µs, draw recording ~8.5 µs, Vulkan recording unmeasured); cutting that is the next
    lever, with a profile of the busy samples of those three threads.
+   **The driver and the GPU (2026-10-22):** at 540p neither limits the frame. The game never
+   waits for the GPU (VO label waits all "already free", stage A's GPU-tick waits 0.1-0.7%),
+   the Vulkan recording thread is idle 60-70% of the time even in the 14 FPS windows, and the
+   driver's own CPU work inside it is 22-24% of wall time (~10 µs per draw, on a thread with
+   slack). At 1080p the same scenes ran 12-15 FPS: there the GPU side is the limit. The frame
+   has ~220 render pass ends, ~210 barriers and ~285 layout transitions whatever the draw
+   count (`uc3 draw stats` line); on a tiling GPU each pass end is a tile resolve and each
+   barrier between draws a drain, which costs nothing at 540p and is the first suspect at
+   1080p. Tools for this round: `GOW3_GPU_PROFILE=1` (GPU ms per frame, busy and idle apart,
+   by render pass and dispatch), `TU_DEBUG=sysmem` / `TU_DEBUG=gmem` through
+   `uncharted-env.txt` (forcing direct or tiled rendering tells whether the pass structure
+   matters), and `GOW3_BIG_CORES=1` (the renderer threads kept on the big cores: the
+   scheduler reads their burst-and-wait pattern as light load). The driver build itself is not
+   a lever: the `8G2-OneUI` variant is the packager's Standard build plus a flag for the
+   Adreno 740, and the phone's own driver is not supported by the renderer.
 1. **Uncharted 1, recording thread (stage B), 8.5-9 µs per draw.** Profile it on the device
    (a self-profiling mode: bundle simpleperf from the NDK, record a few seconds from the
    overlay, export with the logs) and cut the per-draw cost: resource binding (3.3 µs),
@@ -239,13 +254,23 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
   inclusive reports; DIR is CI's `uncharted-android-symbols-<sha>` artifact of the same build
   (unstripped `libgow3gpu.so`, `libgow3cpu.so`, `gow3-probe`). Addresses in the Vulkan driver
   or libc come out as library+offset.
+- **GPU profile on the phone**: `GOW3_GPU_PROFILE=1` in `uncharted-env.txt` (the renderer's
+  timestamp profiler, `vk_gpu_profiler.h`): every 5 s, `GPU profile: X ms/frame busy, Y
+  ms/frame idle between N submissions, ...` then the GPU time per frame by render pass
+  (size, formats, shader hashes), compute dispatch and HLE copy. Busy against the frame time
+  says whether the GPU limits; the idle time is the GPU waiting for the CPU (the frame cap
+  included).
 - `uncharted-env.txt` in the game folder overrides runtime options without a new APK: one
-  `GOW3_NAME=value` per line (an empty value unsets it, `#` starts a comment). Applied after the
+  `NAME=value` per line (an empty value unsets it, `#` starts a comment). Applied after the
   game's own options in `UnchartedGames.kt`; each applied line is echoed at the top of
-  `android-game.log`.
+  `android-game.log`. Besides the port's `GOW3_*` options it passes the Turnip driver's:
+  `TU_DEBUG` (`sysmem` forces direct rendering, `gmem` tiled, `nolrz`, `noubwc`, several
+  comma-separated), `FD_DEV_FEATURES`, `IR3_SHADER_DEBUG` and `MESA_*`.
+- `GOW3_BIG_CORES=1`: the command processor, the draw recording, Vulkan recording and ring
+  copy threads are kept on the cores whose maximum clock is at least 80% of the fastest
+  core's (`Big cores:` line in the log). Off by default.
 
 - In-app: **About → Export logs** (`android-game.log`, the previous run's log, logcat).
-- `GOW3_FEX_LOG=1` prints FEXCore's own log; `TU_DEBUG` options go to Turnip (see the Mesa
-  documentation).
+- `GOW3_FEX_LOG=1` prints FEXCore's own log.
 - Exit codes of `run-bionic.sh`: 2 means a precondition failed before the game started (missing
   files, or an image prepared for another executable).

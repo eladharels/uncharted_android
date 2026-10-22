@@ -10,6 +10,7 @@
 #endif
 #include <time.h>
 #include "gow3_copy.h"
+#include "gow3_threads.h"
 #include "gow3_toggles.h"
 #include <cstdio>
 #include <cstdlib>
@@ -266,6 +267,7 @@ void Liverpool::ProcessCommands() {
 
 void Liverpool::Process(std::stop_token stoken) {
     Common::SetCurrentThreadName("shadPS4:GpuCommandProcessor");
+    Gow3Threads::PreferBigCores("shadPS4:GpuCommandProcessor");
 #ifndef _WIN32
     if (clockid_t clock; pthread_getcpuclockid(pthread_self(), &clock) == 0) {
         Gow3Stats::gpu_thread_clock.store(static_cast<int>(clock));

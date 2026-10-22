@@ -20,6 +20,7 @@
 #include <memory>
 #include <thread>
 #include "common/rdtsc.h"
+#include "gow3_threads.h"
 #include "common/spin_wait.h"
 
 #include "common/thread.h"
@@ -278,6 +279,7 @@ private:
     /// GOW3_RING_COPY_STEAL: the copy thread drains in the background and sleeps for real.
     void RunSteal(std::stop_token stop) {
         Common::SetCurrentThreadName("gow3:RingCopy0");
+        Gow3Threads::PreferBigCores("gow3:RingCopy0");
         // The waiters run the copies they need, so by default the thread sleeps right after draining.
         const u32 spin_us = std::getenv("GOW3_RING_COPY_SPIN_US") ? SpinMicros() : 0;
         auto report_at = std::chrono::steady_clock::now() + std::chrono::seconds(5);
