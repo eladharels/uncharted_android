@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 #include "core/memory.h"
 #include "shader_recompiler/info.h"
 #include "video_core/renderer_vulkan/vk_rasterizer.h"
@@ -575,7 +576,9 @@ struct InOrderCopy {
     u32 size;
     u32 pad;
 };
-constexpr u32 IN_ORDER_COPY_MAX = 256;
+// uncharted_android: 256 bytes left the larger guest copies (~1.5 per frame in Uncharted 1)
+// draining the draw pipe; the packet ring takes up to a quarter of its 16 MiB.
+constexpr u32 IN_ORDER_COPY_MAX = 64 * 1024;
 
 void RunInOrderCopy(Rasterizer& rasterizer, const u8* data) {
     const auto& copy = *reinterpret_cast<const InOrderCopy*>(data);
@@ -683,7 +686,9 @@ bool ExecuteScalarCopyInOrder(const Shader::Info& info, const AmdGpu::ComputePro
         !mapped || !backing || end - src.base_address < size) {
         return reject(6);
     }
-    u8 packet[sizeof(InOrderCopy) + IN_ORDER_COPY_MAX];
+    thread_local std::vector<u8> packet_storage;
+    packet_storage.resize(sizeof(InOrderCopy) + size);
+    u8* packet = packet_storage.data();
     *reinterpret_cast<InOrderCopy*>(packet) = {dst.base_address, static_cast<u32>(size), 0};
     std::memcpy(packet + sizeof(InOrderCopy), backing, size);
     if (rasterizer.RunInOrder(&RunInOrderCopy, packet, static_cast<u32>(sizeof(InOrderCopy) + size))) {
