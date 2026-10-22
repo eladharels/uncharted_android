@@ -13,6 +13,7 @@
 #include <windows.h>
 #else
 #include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <sched.h>
@@ -141,30 +142,90 @@ inline void PreferBigCores(const char* who) {
     }
 }
 
-/// uncharted_android: the cores' current clocks in GHz ("2.1 2.1 2.9 2.9 2.9 2.9 2.9 3.3"),
-/// for the 5-second statistics: a phone lowers them under sustained load (thermal
-/// throttling), which shows as every stage getting slower at the same work. Empty where
-/// cpufreq is not readable.
+/// Reads one number from a sysfs file; -1 when unreadable.
+inline long ReadSysfsLong(const char* path) {
+    FILE* f = std::fopen(path, "r");
+    if (!f) {
+        return -1;
+    }
+    long value = -1;
+    if (std::fscanf(f, "%ld", &value) != 1) {
+        value = -1;
+    }
+    std::fclose(f);
+    return value;
+}
+
+/// uncharted_android: the cores' current clocks in GHz ("1.7 1.7 1.5 1.5 1.5 1.6 1.6 1.6"),
+/// and, when a core's allowed maximum (scaling_max_freq) sits below its hardware maximum,
+/// those caps: the phone's thermal management lowering the clocks under sustained load. The
+/// GPU's clock the same way (kgsl) where readable. The process's CPU use since the last call
+/// (user and kernel time over wall time, in cores) says how much heat the game makes. For the
+/// 5-second statistics. Empty where cpufreq is not readable.
 inline std::string CpuClocks() {
-    std::string line;
+    std::string cur, caps, hw;
+    bool capped = false;
     for (int cpu = 0; cpu < 64; ++cpu) {
         char path[96];
         std::snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq",
                       cpu);
-        FILE* f = std::fopen(path, "r");
-        if (!f) {
+        const long khz = ReadSysfsLong(path);
+        if (khz < 0 && cpu == 0) {
+            return {};
+        }
+        if (khz < 0) {
             break;
         }
-        long khz = 0;
-        const bool ok = std::fscanf(f, "%ld", &khz) == 1;
-        std::fclose(f);
-        char text[16];
-        if (ok) {
-            std::snprintf(text, sizeof(text), "%s%.1f", line.empty() ? "" : " ", khz / 1e6);
-        } else {
-            std::snprintf(text, sizeof(text), "%s?", line.empty() ? "" : " ");
-        }
+        std::snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq",
+                      cpu);
+        const long cap = ReadSysfsLong(path);
+        std::snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq",
+                      cpu);
+        const long max = ReadSysfsLong(path);
+        char text[32];
+        std::snprintf(text, sizeof(text), "%s%.1f", cur.empty() ? "" : " ", khz / 1e6);
+        cur += text;
+        std::snprintf(text, sizeof(text), "%s%.1f", caps.empty() ? "" : " ", cap / 1e6);
+        caps += text;
+        std::snprintf(text, sizeof(text), "%s%.1f", hw.empty() ? "" : " ", max / 1e6);
+        hw += text;
+        capped |= cap > 0 && max > 0 && cap < max;
+    }
+    std::string line = "CPU clocks (GHz): " + cur;
+    if (capped) {
+        line += "; capped to " + caps + " of " + hw;
+    }
+    const long gpu = ReadSysfsLong("/sys/class/kgsl/kgsl-3d0/gpuclk");
+    const long gpu_max = ReadSysfsLong("/sys/class/kgsl/kgsl-3d0/max_gpuclk");
+    if (gpu > 0) {
+        char text[64];
+        std::snprintf(text, sizeof(text), "; GPU %.0f MHz", gpu / 1e6);
         line += text;
+        if (gpu_max > 0) {
+            std::snprintf(text, sizeof(text), " of %.0f", gpu_max / 1e6);
+            line += text;
+        }
+    }
+    static std::chrono::steady_clock::time_point last_time{};
+    static double last_user = 0, last_sys = 0;
+    rusage usage{};
+    if (getrusage(RUSAGE_SELF, &usage) == 0) {
+        const auto now = std::chrono::steady_clock::now();
+        const double user = usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6;
+        const double sys = usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6;
+        if (last_time != std::chrono::steady_clock::time_point{}) {
+            const double wall = std::chrono::duration<double>(now - last_time).count();
+            if (wall > 0.5) {
+                char text[96];
+                std::snprintf(text, sizeof(text), "; process CPU %.1f cores (user %.1f, kernel %.1f)",
+                              (user - last_user + sys - last_sys) / wall, (user - last_user) / wall,
+                              (sys - last_sys) / wall);
+                line += text;
+            }
+        }
+        last_time = now;
+        last_user = user;
+        last_sys = sys;
     }
     return line;
 }

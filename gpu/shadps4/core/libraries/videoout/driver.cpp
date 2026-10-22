@@ -698,7 +698,7 @@ void VideoOutDriver::Flip(const Request& req) {
             // uncharted_android: the cores' clocks at the window's end, for telling thermal
             // throttling (every stage slower at the same work) from a change in the work.
             if (const std::string clocks = Gow3Threads::CpuClocks(); !clocks.empty()) {
-                std::printf("CPU clocks (GHz): %s\n", clocks.c_str());
+                std::printf("%s\n", clocks.c_str());
             }
             intervals.clear();
             window_start = now;

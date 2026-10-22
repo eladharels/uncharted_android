@@ -232,9 +232,17 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    draws per second, 19-23 FPS for the rest of the run. Every stage slower at the same work,
    starting a fixed time into the session, reads as thermal throttling of the CPU clocks
    rather than as an effect of either option; the `CPU clocks (GHz)` line now printed with
-   each 5-second window is there to settle it (next: a long run on a cool phone). The
-   earlier long sessions (9-12 µs per draw throughout) would all have been throttled ones.
-   If so, the levers are heat: less CPU burnt in spin and yield loops, fewer threads busy.
+   each 5-second window is there to settle it. First clock readings (Uncharted 2, train
+   prologue, two short sessions): the big cores at 1.5-1.6 GHz and the prime core at 1.6
+   during gameplay (2.4 in the menus, 2.7 the highest seen; hardware maxima ~3.1 and 3.3),
+   falling from 1.9 to 1.5 over a session. Whether that is a thermal cap (scaling_max_freq
+   lowered) or the governor's choice for a bursty load (cur below an untouched max) decides
+   the remedy, so the line now also prints the caps when they sit below the hardware
+   maximum, the GPU clock (kgsl) and the process's CPU use in cores. The earlier long
+   sessions (9-12 µs per draw throughout) would all have been throttled ones. If heat: less
+   CPU burnt in spin and yield loops and speculative helpers (`GOW3_PREP_WORKERS=0` is the
+   first test: four SCHED_IDLE workers soak up every idle core). If the governor: a
+   performance-hint session (ADPF) for the renderer threads.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.
@@ -282,7 +290,9 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
   `TU_DEBUG` (`sysmem` forces direct rendering, `gmem` tiled, `nolrz`, `noubwc`, several
   comma-separated), `FD_DEV_FEATURES`, `IR3_SHADER_DEBUG` and `MESA_*`.
 - `CPU clocks (GHz): ...` with each 5-second `Frame stats` window: the cores' current clocks
-  (`scaling_cur_freq`), for telling thermal throttling from a change in the work.
+  (`scaling_cur_freq`); `capped to ... of ...` when the allowed maximum sits below the
+  hardware's (thermal management); the GPU clock where kgsl exposes it; and the process's
+  CPU use over the window in cores (user and kernel).
 - `GOW3_BIG_CORES` (default 1 for Uncharted): the command processor, the draw recording,
   Vulkan recording and ring copy threads are kept on the cores whose maximum clock is at
   least 80% of the fastest core's (`Big cores:` line in the log). `2` extends it to the whole
