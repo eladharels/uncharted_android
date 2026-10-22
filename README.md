@@ -13,7 +13,7 @@ runtime, the shadPS4-based renderer, audio, input) is native ARM64 code.
 
 | Game | Executable | Android |
 |---|---|---|
-| Uncharted: Drake's Fortune | `eboot.bin` | Playable, 24-31 FPS at 540p |
+| Uncharted: Drake's Fortune | `eboot.bin` | Playable, 20-30 FPS at 540p (30 while the phone is cool) |
 | Uncharted 2: Among Thieves | `big2-ps4_Shipping.elf` | Runs; the train prologue is slow (see Tips) |
 | Uncharted 3: Drake's Deception | `big3-ps4_Shipping.elf` | Starts; not played far on Android yet |
 

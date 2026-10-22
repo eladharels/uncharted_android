@@ -23,6 +23,7 @@
 #include "gow3_toggles.h"
 #include "gow3_graphics.h"
 #include "gow3_settings.h"
+#include "gow3_threads.h"
 #include "video_core/renderer_vulkan/vk_frame_capture.h"
 #include "common/debug.h"
 #include "common/thread.h"
@@ -693,6 +694,11 @@ void VideoOutDriver::Flip(const Request& req) {
                             "%u frames over 1.5x median\n",
                             median, std::sqrt(std::max(0.0, sq / intervals.size() - mean * mean)),
                             sorted[std::min(sorted.size() - 1, sorted.size() * 99 / 100)], spikes);
+            }
+            // uncharted_android: the cores' clocks at the window's end, for telling thermal
+            // throttling (every stage slower at the same work) from a change in the work.
+            if (const std::string clocks = Gow3Threads::CpuClocks(); !clocks.empty()) {
+                std::printf("CPU clocks (GHz): %s\n", clocks.c_str());
             }
             intervals.clear();
             window_start = now;

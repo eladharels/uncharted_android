@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <thread>
+#include <string>
 #ifdef _WIN32
 #include <bit>
 #include <windows.h>
@@ -41,6 +42,7 @@ inline void MakeBackground() {
 /// Phones only (below).
 inline void PreferBigCores(const char*) {}
 inline void PreferBigCoresForProcess() {}
+inline std::string CpuClocks() { return {}; }
 #else
 
 /// Hardware threads available to the process.
@@ -137,6 +139,34 @@ inline void PreferBigCores(const char* who) {
     if (sched_setaffinity(0, sizeof(big), &big) != 0) {
         std::printf("Big cores: sched_setaffinity failed for %s (errno %d)\n", who, errno);
     }
+}
+
+/// uncharted_android: the cores' current clocks in GHz ("2.1 2.1 2.9 2.9 2.9 2.9 2.9 3.3"),
+/// for the 5-second statistics: a phone lowers them under sustained load (thermal
+/// throttling), which shows as every stage getting slower at the same work. Empty where
+/// cpufreq is not readable.
+inline std::string CpuClocks() {
+    std::string line;
+    for (int cpu = 0; cpu < 64; ++cpu) {
+        char path[96];
+        std::snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq",
+                      cpu);
+        FILE* f = std::fopen(path, "r");
+        if (!f) {
+            break;
+        }
+        long khz = 0;
+        const bool ok = std::fscanf(f, "%ld", &khz) == 1;
+        std::fclose(f);
+        char text[16];
+        if (ok) {
+            std::snprintf(text, sizeof(text), "%s%.1f", line.empty() ? "" : " ", khz / 1e6);
+        } else {
+            std::snprintf(text, sizeof(text), "%s?", line.empty() ? "" : " ");
+        }
+        line += text;
+    }
+    return line;
 }
 
 /// Level 2: the calling thread (the process's main thread, at GPU initialization) and, by

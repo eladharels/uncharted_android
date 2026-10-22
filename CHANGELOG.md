@@ -29,7 +29,7 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
   Turnip driver's own (`TU_DEBUG`, `FD_DEV_FEATURES`, `MESA_*`) included.
 - `GOW3_GPU_PROFILE=1` reports the GPU's busy and idle time per frame apart.
 - The renderer threads are kept on the big cores (`GOW3_BIG_CORES=1`, the default; `2` for the
-  whole process): on the Galaxy S24 Ultra the heavy frames went from 50-67 ms to the 30 FPS cap.
+  whole process). The 5-second statistics print the cores' clocks (thermal throttling).
 
 ### Fixed
 - Black screen once gameplay starts (audio playing, menu remnants frozen on screen): the arm64

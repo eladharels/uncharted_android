@@ -224,11 +224,20 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    a lever: the `8G2-OneUI` variant is the packager's Standard build plus a flag for the
    Adreno 740, and the phone's own driver is not supported by the renderer.
    **Measured (same day):** the GPU timer at 540p: busy 9-21 ms per frame (27-48% of the
-   frame), idle the rest; `TU_DEBUG` tests therefore skipped at 540p. `GOW3_BIG_CORES=1`: the
-   command thread from 7-12 to 5-7 µs per draw, frames of 1,850-2,250 draws from 50-67 ms to
-   the 30 FPS cap (33.3 ms median), 24-31 FPS throughout the boat section; now the default.
-   The frame times are quantized to vblank multiples (33.3, 50, 66.7 ms) by the game's own
-   pacing, so the FPS figures move in steps of 30, 20, 15.
+   frame), idle the rest; `TU_DEBUG` tests therefore skipped at 540p. `GOW3_BIG_CORES=1`
+   with the GPU timer, first run after 40 minutes of rest: the command thread at 5-7 µs per
+   draw, frames of 1,850-2,250 draws at the 30 FPS cap (33.3 ms median), 24-31 FPS through
+   the boat section. The run right after it, big cores alone: 7.7 µs per draw and the same
+   waits for 15 s, then a step to 10-12 µs per draw with stage B 45-50% busy at the same
+   draws per second, 19-23 FPS for the rest of the run. Every stage slower at the same work,
+   starting a fixed time into the session, reads as thermal throttling of the CPU clocks
+   rather than as an effect of either option; the `CPU clocks (GHz)` line now printed with
+   each 5-second window is there to settle it (next: a long run on a cool phone). The
+   earlier long sessions (9-12 µs per draw throughout) would all have been throttled ones.
+   If so, the levers are heat: less CPU burnt in spin and yield loops, fewer threads busy.
+   Big cores stay the default (no run showed harm). The frame times are quantized to vblank
+   multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
+   of 30, 20, 15.
 1. **Uncharted 1, recording thread (stage B), 8.5-9 µs per draw.** Profile it on the device
    (a self-profiling mode: bundle simpleperf from the NDK, record a few seconds from the
    overlay, export with the logs) and cut the per-draw cost: resource binding (3.3 µs),
@@ -272,6 +281,8 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
   `android-game.log`. Besides the port's `GOW3_*` options it passes the Turnip driver's:
   `TU_DEBUG` (`sysmem` forces direct rendering, `gmem` tiled, `nolrz`, `noubwc`, several
   comma-separated), `FD_DEV_FEATURES`, `IR3_SHADER_DEBUG` and `MESA_*`.
+- `CPU clocks (GHz): ...` with each 5-second `Frame stats` window: the cores' current clocks
+  (`scaling_cur_freq`), for telling thermal throttling from a change in the work.
 - `GOW3_BIG_CORES` (default 1 for Uncharted): the command processor, the draw recording,
   Vulkan recording and ring copy threads are kept on the cores whose maximum clock is at
   least 80% of the fastest core's (`Big cores:` line in the log). `2` extends it to the whole
