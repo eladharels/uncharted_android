@@ -49,6 +49,12 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
 - Sampling CPU profiler inside the game process (`GOW3_PROFILE`), its output in the log
   export, CI's unstripped-symbols artifact and `tools/android/profile/symbolize.py`.
 
+- From the first on-device profile (Uncharted 1, 540p): the job workers block at once
+  (`GOW3_JOB_SPIN=0`: under the JIT each PAUSE was a `sched_yield`, 63-80% of six threads);
+  the draw recording thread no longer waits for the recording thread's copies at end-of-pipe
+  events with nothing to download; stage A's drain and `WaitHostCopies` wake through futexes
+  on arm64 instead of polling with sleeps.
+
 ### Known gaps
 - See [docs/ANDROID_PORT.md](docs/ANDROID_PORT.md#known-gaps).
 

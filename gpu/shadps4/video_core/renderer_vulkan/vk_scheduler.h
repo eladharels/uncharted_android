@@ -856,7 +856,10 @@ public:
         host_copies_issued.fetch_add(1, std::memory_order_relaxed);
         Record([copy = std::forward<Func>(copy), this](vk::CommandBuffer) {
             copy();
-            host_copies_done.fetch_add(1, std::memory_order_release);
+            host_copies_done.fetch_add(1, std::memory_order_seq_cst);
+            if (host_copies_waiting.load(std::memory_order_seq_cst)) {
+                host_copies_done.notify_all(); // WaitHostCopies (arm64)
+            }
         });
     }
 
@@ -1011,6 +1014,7 @@ private:
     u32 crumb_stream{};       ///< GPU breadcrumbs stream of this command stream (vk_breadcrumbs.h)
     std::atomic<u64> host_copies_issued{0};
     std::atomic<u64> host_copies_done{0};
+    std::atomic<u32> host_copies_waiting{0}; ///< a thread waits on host_copies_done (arm64)
     std::atomic<u64> deferred_signals_issued{0}; ///< by the thread recording (A or B)
     std::shared_ptr<std::atomic<u64>> deferred_signals_done =
         std::make_shared<std::atomic<u64>>(0);

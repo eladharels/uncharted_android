@@ -317,6 +317,19 @@ void TextureCache::ProcessDownloadImages() {
         ReportPartialViews();
     }
     if (deferred_readbacks) {
+        // uncharted_android: with nothing to download there is no page to protect, so the wait
+        // for the recording thread's copies is skipped (the draw recording thread spent 20% of
+        // its time in it at every end-of-pipe event on a phone); the completed readbacks still
+        // retire. Checked again under the lock below, after the wait, for images added since.
+        {
+            std::unique_lock lock{download_images_mutex};
+            if (download_images.empty()) {
+                lock.unlock();
+                std::scoped_lock readback_lock{readback_mutex};
+                RetireReadbacks();
+                return;
+            }
+        }
         // Upload workers must finish reading RAM before these pages become inaccessible.
         scheduler.WaitHostCopies();
         std::scoped_lock readback_lock{readback_mutex};

@@ -115,10 +115,33 @@ public:
         const u32 slot = reason < NumReasons ? reason : ReasonRasterizer;
         ++drains_by_reason[slot];
         const u64 start = Common::FencedRDTSC();
+#if defined(ARCH_X86_64)
         Common::SpinWait backoff;
         while (consumed.load(std::memory_order_acquire) != head) {
             backoff();
         }
+#else
+        // uncharted_android: a short spin, then a futex wait that stage B wakes when it
+        // advances (no polling: on a phone the sleep-based backoff added up to a frame's
+        // worth of latency over the drains of a frame).
+        for (u32 spins = 0;; ++spins) {
+            const u64 c = consumed.load(std::memory_order_seq_cst);
+            if (c == head) {
+                break;
+            }
+            if (spins < 512) {
+                COMMON_CPU_RELAX();
+                continue;
+            }
+            drain_waiting.store(1, std::memory_order_seq_cst);
+            if (consumed.load(std::memory_order_seq_cst) == head) {
+                drain_waiting.store(0, std::memory_order_seq_cst);
+                break;
+            }
+            consumed.wait(c, std::memory_order_seq_cst);
+            drain_waiting.store(0, std::memory_order_seq_cst);
+        }
+#endif
         const u64 waited = Common::FencedRDTSC() - start;
         drain_cycles += waited;
         cycles_by_reason[slot] += waited;
@@ -207,7 +230,7 @@ private:
             const auto* header = reinterpret_cast<const Header*>(ring.get() + at % Capacity);
             if (header->size == 0) {
                 at += Capacity - at % Capacity;
-                consumed.store(at, std::memory_order_release);
+                Consumed(at);
                 continue;
             }
             if (copier) {
@@ -218,7 +241,15 @@ private:
             handler(context, reinterpret_cast<const u8*>(header + 1), header->payload);
             busy_cycles.fetch_add(Common::FencedRDTSC() - start, std::memory_order_relaxed);
             at += header->size;
-            consumed.store(at, std::memory_order_release);
+            Consumed(at);
+        }
+    }
+
+    /// Stage B: publishes its position and wakes a draining stage A (see Drain).
+    void Consumed(u64 at) {
+        consumed.store(at, std::memory_order_seq_cst);
+        if (drain_waiting.load(std::memory_order_seq_cst)) {
+            consumed.notify_all();
         }
     }
 
@@ -231,6 +262,7 @@ private:
     u32 pending_size = 0;
     alignas(64) std::atomic<u64> published{0};
     alignas(64) std::atomic<u64> consumed{0};
+    std::atomic<u32> drain_waiting{0}; ///< stage A waits on `consumed` (Drain)
     alignas(64) std::atomic<u32> wake{0};
     std::atomic<bool> sleeping{false};
     std::atomic<u32> stage_b_tid{0};

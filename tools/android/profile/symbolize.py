@@ -139,20 +139,27 @@ class Symbolizer:
             out[addr] = "%s+0x%x" % (base, file_offset)
         for full, items in pending.items():
             proc = subprocess.run(
-                [self.tool, "--obj=" + full, "--functions=short", "--inlining=false", "--demangle", "--basenames"],
+                [self.tool, "--obj=" + full, "--functions=short", "--inlining=true", "--demangle", "--basenames"],
                 input="".join("0x%x\n" % v for _, v in items), capture_output=True, text=True)
-            lines = proc.stdout.split("\n")
-            # Each address: function line, file:line:col line, blank line.
-            pos = 0
-            for addr, vaddr in items:
-                func = lines[pos] if pos < len(lines) else "??"
-                where = lines[pos + 1] if pos + 1 < len(lines) else ""
-                pos += 3
-                if func in ("", "??"):
-                    text = "%s+0x%x" % (os.path.basename(full), vaddr)
-                else:
-                    where = where.split(":")
-                    text = func + (" (%s:%s)" % (where[0], where[1]) if len(where) >= 2 and where[0] not in ("", "??") else "")
+            # Each address: (function line, file:line:col line) per inlined frame, innermost
+            # first, then a blank line. The outermost frame names the function the code is in;
+            # the innermost says what it was doing there.
+            blocks = proc.stdout.split("\n\n")
+            for (addr, vaddr), block in zip(items, blocks):
+                lines = [l for l in block.split("\n") if l != ""]
+                frames = [(lines[i], lines[i + 1] if i + 1 < len(lines) else "") for i in range(0, len(lines), 2)]
+                frames = [(f, w) for f, w in frames if f not in ("", "??")]
+                if not frames:
+                    out[addr] = "%s+0x%x" % (os.path.basename(full), vaddr)
+                    continue
+                outer_func, outer_where = frames[-1]
+                inner_func, inner_where = frames[0]
+                where = inner_where.split(":")
+                text = outer_func
+                if inner_func != outer_func:
+                    text += " [" + inner_func + "]"
+                if len(where) >= 2 and where[0] not in ("", "??"):
+                    text += " (%s:%s)" % (where[0], where[1])
                 out[addr] = text
         self.cache.update(out)
         return out

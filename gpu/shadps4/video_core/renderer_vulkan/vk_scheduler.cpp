@@ -274,9 +274,27 @@ void Scheduler::WaitHostCopies() {
         const auto started = std::chrono::steady_clock::now();
         bool reported = false;
         Common::SpinWait backoff{true};
+        [[maybe_unused]] u32 spins = 0;
         while (host_copies_done.load(std::memory_order_acquire) <
                host_copies_issued.load(std::memory_order_relaxed)) {
+#if defined(ARCH_X86_64)
             backoff();
+#else
+            // uncharted_android: a futex wait the recording thread wakes (RecordHostCopy),
+            // after a short spin; polling with sleeps cost the draw recording thread 20% of
+            // its time on a phone. Bounded (2 s slices) so the hang report below still runs.
+            if (++spins < 512) {
+                COMMON_CPU_RELAX();
+            } else {
+                const u64 done = host_copies_done.load(std::memory_order_seq_cst);
+                host_copies_waiting.store(1, std::memory_order_seq_cst);
+                if (host_copies_done.load(std::memory_order_seq_cst) == done &&
+                    done < host_copies_issued.load(std::memory_order_relaxed)) {
+                    host_copies_done.wait(done, std::memory_order_seq_cst);
+                }
+                host_copies_waiting.store(0, std::memory_order_seq_cst);
+            }
+#endif
             // uc3: a wait this long is a hang in the making; say what it waits for.
             if (!reported && std::chrono::steady_clock::now() - started > std::chrono::seconds{2}) {
                 reported = true;

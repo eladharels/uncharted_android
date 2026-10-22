@@ -99,16 +99,20 @@ struct ThreadInfo {
     bool hot;
 };
 
+// The threads that carry a frame (names as /proc shows them: 15 characters): the command
+// processor, the draw recording thread, the Vulkan recording thread, the ring copier, the draw
+// preparation workers, the copy threads and the game's job workers. The rest (submit threads,
+// shader compilers, the game's I/O threads) is sampled at a tenth of the rate.
 bool HotThread(const std::string& name) {
-    static const char* const cold[] = {"gow3:window", "gow3:Present", "gow3:pgo",
-                                       "gow3:kernel_service", "gow3:Uffd", "gow3:profiler"};
-    for (const char* c : cold) {
-        if (name == c) {
-            return false;
+    static const char* const hot[] = {"shadPS4:GpuComm", "gow3:DrawRec", "gow3:VkRecorder",
+                                      "gow3:RingCopy", "gow3:DrawPrep", "gow3:DrawScan",
+                                      "gow3:Copy", "gow3:TexBind", "NdJobWorker"};
+    for (const char* h : hot) {
+        if (name.rfind(h, 0) == 0) {
+            return true;
         }
     }
-    return name.rfind("gow3:", 0) == 0 || name.rfind("shadPS4:Gpu", 0) == 0 ||
-           name.rfind("GoW3:", 0) == 0;
+    return false;
 }
 
 std::vector<ThreadInfo> ListThreads(int self_tid) {

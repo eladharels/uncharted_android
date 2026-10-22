@@ -30,8 +30,9 @@ object UnchartedGames {
         // uncharted_android: the six Naughty Dog job workers spin for work without ever blocking
         // during gameplay (probe.c patch_job_spin). On the PC that costs idle cores; on a phone
         // with eight, it takes the cores the renderer's threads need (12 FPS with the CPU at 70%).
-        // They spin 100 times and block, in gameplay too, as the PC port runs Uncharted 3.
-        "GOW3_JOB_SPIN" to "100", "GOW3_JOB_SLEEP" to "1",
+        // Under the JIT each PAUSE of the spin is a sched_yield system call (the profile showed
+        // the six workers 63-80% in it with GOW3_JOB_SPIN=100), so they block at once.
+        "GOW3_JOB_SPIN" to "0", "GOW3_JOB_SLEEP" to "1",
     )
 
     val GAMES = listOf(
