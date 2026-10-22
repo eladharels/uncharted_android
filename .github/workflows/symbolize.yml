@@ -57,6 +57,20 @@ jobs:
             for lib in symbols/*; do echo "== $lib"; llvm-readelf-18 -l "$lib" 2>/dev/null | grep -A1 "LOAD" || readelf -lW "$lib" | grep LOAD; done
             echo "== symbols of interest"
             llvm-nm-18 -C --defined-only symbols/libgow3gpu.so 2>/dev/null | grep -E " (T|t) " | grep -E "DrawPipe::Run|Drain|poll_with_backoff|RecorderThread|Liverpool::Process|WaitHostCopies|RunDrawPacket|DispatchDirect|GpuCommandProcessor|Rasterizer::Draw\(" | head -40
+            echo "== llvm-symbolizer on known vaddrs (poll_with_backoff, WaitHostCopies, liverpool, RunDrawPacket)"
+            printf '0xc642ab\n0xc8f323\n0xb29157\n0xc3ee17\n0xc64b37\n' | "$sym" --obj=symbols/libgow3gpu.so --inlining=true --functions=short --demangle --basenames
+            echo "== symbolize.py resolve on the same runtime addresses (map 74f7b5a000 off b21000)"
+            python3 - <<'PY'
+          import sys
+          sys.path.insert(0, 'tools/android/profile')
+          import symbolize as S
+          m = S.Mapping(0x74f7b5a000, 0x74f89e8000, 0xb21000, '/x/libgow3gpu.so')
+          sym = S.Symbolizer('symbols')
+          base = 0x74f7b5a000 - 0xb21000
+          for off in (0xc602ac, 0xc8b324, 0xb25158, 0xc3ae18, 0xc60b38):
+              a = base + off
+              print(hex(off), sym.resolve([m], [a - 1])[a - 1])
+          PY
           } > profiles/layout.txt 2>&1 || true
           echo "${{ steps.find.outputs.dirs }}" | while read -r dir; do
             [ -n "$dir" ] || continue
