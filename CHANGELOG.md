@@ -28,6 +28,10 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
 - `uncharted-env.txt` in the game folder: runtime option overrides for experiments, the
   Turnip driver's own (`TU_DEBUG`, `FD_DEV_FEATURES`, `MESA_*`) included.
 - `GOW3_GPU_PROFILE=1` reports the GPU's busy and idle time per frame apart.
+- Logs over adb: the game log and `profile.txt` are also copied to
+  `/sdcard/Android/data/<package>/files/logs` and the game log goes to logcat
+  (`UnchartedGame`); `tools/android/pull-logs.ps1` pulls them. The app is `profileable` from the
+  shell for simpleperf and perfetto.
 - The renderer threads are kept on the big cores (`GOW3_BIG_CORES=1`, the default; `2` for the
   whole process). The 5-second statistics print the cores' clocks and caps, the GPU clock and
   the process's CPU use: the phone caps the clocks at 1.5 GHz under the game's 4-5 cores of

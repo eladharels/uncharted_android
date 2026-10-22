@@ -896,14 +896,33 @@ public final class GameActivity extends Activity implements SaveDialogHost {
             if (!gameLog.renameTo(previous))
                 android.util.Log.w("Uncharted","log rotation: could not rename android-game.log to android-game.prev.log");
         }
+        // uncharted_android: a copy of the game log and profile.txt in the app's external folder
+        // (/sdcard/Android/data/<package>/files/logs), which adb can pull from a release build, and
+        // the game log in logcat (tag UnchartedGame) to follow a run live. The private folder stays
+        // the source for the in-app export.
+        final File shared=getExternalFilesDir("logs");
+        if (shared!=null) {
+            File sharedLog=new File(shared,"android-game.log"), sharedPrevious=new File(shared,"android-game.prev.log");
+            if (sharedLog.isFile()) { sharedPrevious.delete(); sharedLog.renameTo(sharedPrevious); }
+            new File(shared,"profile.txt").delete();
+        }
         try {
             // /system/bin/sh pulls run-bionic.sh directly (toybox): no rootfs loader, no X11.
             final Process launched=process("/system/bin/sh",BASE+"/run-bionic.sh","game");
             game=launched;
             Thread log=new Thread(() -> {
                 try (BufferedReader r=new BufferedReader(new InputStreamReader(launched.getInputStream()));
-                     PrintWriter out=new PrintWriter(new File(DATA,"logs/android-game.log"))) {
-                    String line; while ((line=r.readLine())!=null) { out.println(line); out.flush(); }
+                     PrintWriter out=new PrintWriter(new File(DATA,"logs/android-game.log"));
+                     PrintWriter copy=shared!=null?new PrintWriter(new File(shared,"android-game.log")):null) {
+                    String line; while ((line=r.readLine())!=null) {
+                        out.println(line); out.flush();
+                        android.util.Log.i("UnchartedGame",line);
+                        if (copy!=null) {
+                            copy.println(line); copy.flush();
+                            // The profiler prints this line after each window it wrote to profile.txt.
+                            if (line.startsWith("Profiler: window ")) copyProfile(shared);
+                        }
+                    }
                     int code=launched.waitFor();
                     if (game==launched) {
                         game=null;
@@ -921,6 +940,16 @@ public final class GameActivity extends Activity implements SaveDialogHost {
                 }
             },"Uncharted-log"); log.setDaemon(true); log.start();
         } catch (Exception ex) { error(ex.toString()); }
+    }
+    /** profile.txt to the external logs folder, replaced whole so a pull never sees half a copy. */
+    private void copyProfile(File shared) {
+        File profile=new File(DATA,"logs/profile.txt"), part=new File(shared,"profile.txt.part");
+        try {
+            java.nio.file.Files.copy(profile.toPath(),part.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            if (!part.renameTo(new File(shared,"profile.txt"))) part.delete();
+        } catch (Exception ex) {
+            android.util.Log.w("Uncharted","profile copy: "+ex);
+        }
     }
     private void error(String message) {
         hadError=true;

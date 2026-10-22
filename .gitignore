@@ -65,3 +65,6 @@ local.properties
 .agents/
 .opencode/
 .kotlin
+
+# tools/android/pull-logs.ps1 output
+/logs-*/

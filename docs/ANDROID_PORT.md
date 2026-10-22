@@ -329,6 +329,13 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
   value in `uncharted-env.txt` turns it off.
 
 - In-app: **About → Export logs** (`android-game.log`, the previous run's log, logcat).
+- Over adb, from a release build: the launcher copies the game log, the previous run's log
+  and `profile.txt` (after each profiler window) to the app's external folder, and the game
+  log line by line to logcat with the tag `UnchartedGame`.
+  `tools/android/pull-logs.ps1` pulls the folder into `logs-<time>/` (or by hand:
+  `adb pull /sdcard/Android/data/com.uncharted.android/files/logs`); live:
+  `adb logcat -s UnchartedGame`. The app is `profileable` from the shell, so `simpleperf` and
+  `perfetto` can attach to the game process; `run-as` still needs a debug build.
 - `GOW3_FEX_LOG=1` prints FEXCore's own log.
 - Exit codes of `run-bionic.sh`: 2 means a precondition failed before the game started (missing
   files, or an image prepared for another executable).
