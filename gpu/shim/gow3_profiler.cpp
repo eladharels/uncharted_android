@@ -172,12 +172,26 @@ bool ReadMemory(uint64_t address, void* out, size_t size) {
     return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) == static_cast<ssize_t>(size);
 }
 
+// A return address as saved on the stack carries pointer-authentication bits above the
+// address on arm64 CPUs with PAC (the NDK's default branch protection): XPACLRI strips them
+// (a NOP on CPUs without PAC).
+uint64_t StripPac(uint64_t address) {
+#if defined(__aarch64__)
+    register uint64_t x30 __asm__("x30") = address;
+    __asm__ volatile("hint #7" : "+r"(x30)); // xpaclri
+    return x30;
+#else
+    return address;
+#endif
+}
+
 // The frame-pointer chain of the parked thread, leaf first.
 void Walk(std::vector<uint64_t>& frames) {
     frames.clear();
     frames.push_back(g_park.pc);
-    if (g_park.lr && g_park.lr != g_park.pc) {
-        frames.push_back(g_park.lr);
+    const uint64_t lr = StripPac(g_park.lr);
+    if (lr && lr != g_park.pc) {
+        frames.push_back(lr);
     }
     uint64_t fp = g_park.fp;
     const uint64_t sp = g_park.sp;
@@ -204,6 +218,7 @@ void Walk(std::vector<uint64_t>& frames) {
         uint64_t next_fp, ret;
         std::memcpy(&next_fp, chunk + (fp - chunk_start), 8);
         std::memcpy(&ret, chunk + (fp - chunk_start) + 8, 8);
+        ret = StripPac(ret);
         if (ret == 0) {
             break;
         }

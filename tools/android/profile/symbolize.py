@@ -63,6 +63,13 @@ def parse(path):
                 thread[5].append((int(parts[0]), [int(a, 16) for a in parts[1:]]))
     for w in windows:
         w.maps.sort(key=lambda m: m.start)
+        # Profiles from before the profiler stripped pointer-authentication bits: a saved
+        # return address carries them above the address bits (39 or 48 on Android).
+        va_bits = max((m.end.bit_length() for m in w.maps), default=48)
+        mask = (1 << va_bits) - 1
+        for t in w.threads:
+            for i, (count, frames) in enumerate(t[5]):
+                t[5][i] = (count, [frames[0]] + [f & mask for f in frames[1:]])
     return windows
 
 
