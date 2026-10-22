@@ -39,6 +39,9 @@ class Runtime;
 /// is its only producer), so only the packet's predicate bit travels with the draw.
 struct DrawPredication {
     bool predicated{};
+    /// uncharted_android: a scalar-copy HLE dispatch stage A decided the GPU runs (no guest
+    /// write): the recording thread skips the HLE's decision and records the dispatch.
+    bool hle_gpu_only{};
 };
 
 class Rasterizer {

@@ -2171,6 +2171,14 @@ void Rasterizer::DispatchDirect(bool acb_undrained) {
             ExecuteScalarCopyInOrder(pipeline->GetStage(Shader::SwStage::Compute), CsRegs(), *this)) {
             return;
         }
+        // uncharted_android: a copy the HLE leaves to the GPU is handed over like any dispatch.
+        if (!ScalarCopyHleWritesGuest(pipeline->GetStage(Shader::SwStage::Compute), CsRegs(),
+                                      *this)) {
+            DrawPredication gpu_pred = pred;
+            gpu_pred.hle_gpu_only = true;
+            PostDraw(pipeline, nullptr, false, 0, gpu_pred, &CsRegs());
+            return;
+        }
         // uc3: an HLE that writes guest memory runs here, after the draws before it.
         DrainDrawPipe();
     }
@@ -2200,7 +2208,9 @@ void Rasterizer::DispatchRecord(const ComputePipeline* pipeline, const DrawPredi
     }
     {
         StageBTimer timer{SbDispHle};
-        if (ExecuteShaderHLE(cs, Regs(), cs_program, *this)) {
+        if (pred.hle_gpu_only) {
+            ScalarCopyHleGpuOnlyPrepare(cs, cs_program, *this);
+        } else if (ExecuteShaderHLE(cs, Regs(), cs_program, *this)) {
             return;
         }
     }

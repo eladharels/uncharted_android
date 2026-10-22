@@ -469,6 +469,100 @@ static bool ExecuteScalarCopyHLE(const Shader::Info& info, const AmdGpu::Compute
     return true;
 }
 
+// uncharted_android: the decision of ExecuteScalarCopyHLE, without its effects. On a phone the
+// drain before every HLE dispatch (stage A waiting for stage B to finish everything queued, then
+// stage B idle until stage A goes on) was a third of the command processor's time; a copy the
+// HLE leaves to the GPU anyway needs none of it.
+namespace {
+struct ScalarCopySharps {
+    AmdGpu::Buffer src, dst;
+    u64 size;
+};
+bool ScalarCopyLookup(const Shader::Info& info, const AmdGpu::ComputeProgram& cs_program,
+                      ScalarCopySharps& out) {
+    u64 group_size = 0;
+    if (info.pgm_hash == SCALAR_COPY_SHADER_HASH) {
+        group_size = 1;
+    } else if (info.pgm_hash == SCALAR_COPY64_SHADER_HASH) {
+        group_size = 64;
+    } else {
+        return false;
+    }
+    const Shader::BufferResource* guest[2]{};
+    u32 guest_count = 0;
+    for (const auto& buffer : info.buffers) {
+        if (!buffer.IsSpecial()) {
+            if (guest_count < 2) {
+                guest[guest_count] = &buffer;
+            }
+            ++guest_count;
+        }
+    }
+    const auto ud = info.UserData();
+    if (guest_count != 2 || ud.size() <= 6) {
+        return false;
+    }
+    out.src = guest[0]->GetSharp(info);
+    out.dst = guest[1]->GetSharp(info);
+    if (out.src.GetStride() != 4 || out.dst.GetStride() != 4 || !out.src.base_address ||
+        !out.dst.base_address) {
+        return false;
+    }
+    const u64 count = std::min<u64>(
+        {u64(cs_program.dim_x) * group_size, ud[6], out.src.num_records, out.dst.num_records});
+    out.size = count * 4;
+    return true;
+}
+} // namespace
+
+bool ScalarCopyHleWritesGuest(const Shader::Info& info, const AmdGpu::ComputeProgram& cs_program,
+                              Rasterizer& rasterizer) {
+    if (!ScalarCopyHLEEnabled()) {
+        return false;
+    }
+    ScalarCopySharps c;
+    if (!ScalarCopyLookup(info, cs_program, c)) {
+        return true; // the HLE refuses such a dispatch, after the drain: as before
+    }
+    if (c.size == 0) {
+        return false; // nothing copied, nothing written
+    }
+    auto* memory = Core::Memory::Instance();
+    if (!memory->IsValidGpuMapping(c.src.base_address, c.size) ||
+        !memory->IsValidGpuMapping(c.dst.base_address, c.size)) {
+        return true;
+    }
+    auto& buffer_cache = rasterizer.GetBufferCache();
+    const bool src_gpu = buffer_cache.IsRegionGpuModified(c.src.base_address, c.size);
+    const bool dst_gpu = buffer_cache.IsRegionGpuModified(c.dst.base_address, c.size);
+    if (src_gpu || dst_gpu) {
+        // "GPU copy and guest copy" writes the guest; "GPU copy only" does not.
+        return c.size < 1_MB && !buffer_cache.IsGpuWritten(c.src.base_address, c.size);
+    }
+    return true; // a guest copy (or the GPU-written refusal, which also goes through the drain)
+}
+
+void ScalarCopyHleGpuOnlyPrepare(const Shader::Info& info, const AmdGpu::ComputeProgram& cs_program,
+                                 Rasterizer& rasterizer) {
+    ScalarCopySharps c;
+    if (!ScalarCopyLookup(info, cs_program, c) || c.size == 0) {
+        return;
+    }
+    static const bool depth_sync = [] {
+        const char* env = std::getenv("GOW3_DEPTH_COPY_SYNC");
+        return !(env && env[0] == '0');
+    }();
+    if (depth_sync && c.size >= 1_MB) {
+        // As in ExecuteScalarCopyHLE: the scene depth lives on the GPU only.
+        rasterizer.GetBufferCache().SyncImageToBuffer(c.src.base_address, static_cast<u32>(c.size));
+    }
+    static std::atomic<u32> count{0};
+    const u32 n = count.fetch_add(1, std::memory_order_relaxed) + 1;
+    if (n <= 2 || (n & 16383) == 0) {
+        std::printf("uc3: scalar copy HLE: %u GPU-only copies handed over without a drain\n", n);
+    }
+}
+
 // uc3 (GOW3_HLE_INORDER=1, off by default; Opus's design): a scalar copy from an asynchronous
 // compute queue without draining the draw pipe first. Stage A takes the source bytes now (only
 // when no queued write overlaps them) and hands the destination write to the recording thread,

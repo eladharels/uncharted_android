@@ -189,14 +189,19 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
 0. **First on-device profile (2026-10-22, Uncharted 1 boat, 540p, 20 FPS window):** no
    renderer thread was more than a third busy (command processor 28%, draw recording 34%,
    Vulkan recording 31%; copy threads, submit and shader threads idle), the game's main
-   thread slept 98% and its six job workers were 63-80% in `sched_yield` (the JIT's PAUSE).
-   The frame was latency: stage A draining at HLE dispatches (36% of its time), stage B
-   waiting for the Vulkan recording thread at every end-of-pipe event (`ProcessDownloadImages`
-   → `WaitHostCopies`, 22%), and the 50 µs sleep quanta of the wait loops between them.
-   Changed: job workers block at once, the end-of-pipe wait is skipped when nothing is
-   downloading, the drain and `WaitHostCopies` wake through futexes. To measure next:
-   `GOW3_HLE_INORDER_GFX=1` (no drain at scalar-copy dispatches on the graphics queue) and
-   the remaining polled waits (ring copier, deferred signals).
+   thread slept 98% and its six job workers were blocked in futexes most of the time (as
+   `GOW3_JOB_SPIN`/`GOW3_JOB_SLEEP` intend; `libc.so+0x9be24` is the syscall stub, the caller
+   tells futex from `sched_yield` and `nanosleep`). The frame was latency: stage A draining at
+   every scalar-copy HLE dispatch (36% of its time; ~20 per frame, two thirds small guest
+   copies, a third 2.6 MB GPU copies), stage B waiting for the Vulkan recording thread at every
+   end-of-pipe event (`ProcessDownloadImages` → `WaitHostCopies`, 22%), and the 50 µs sleep
+   quanta of the wait loops between them. Changed: GPU-only HLE copies are handed over without
+   a drain (`ScalarCopyHleWritesGuest`), the end-of-pipe wait is skipped when nothing is
+   downloading, the drain and `WaitHostCopies` wake through futexes. Measured without
+   gain: `GOW3_HLE_INORDER_GFX=1` (17 FPS against 20; most small copies went in order, the
+   large ones still drained). Next: the guest-copy drains (an in-order copy that stage A does
+   not treat as a pending write, or the HLE's guest copy done on stage B) and the remaining
+   polled waits (ring copier, deferred signals).
 1. **Uncharted 1, recording thread (stage B), 8.5-9 µs per draw.** Profile it on the device
    (a self-profiling mode: bundle simpleperf from the NDK, record a few seconds from the
    overlay, export with the logs) and cut the per-draw cost: resource binding (3.3 µs),
