@@ -941,11 +941,18 @@ public final class GameActivity extends Activity implements SaveDialogHost {
             },"Uncharted-log"); log.setDaemon(true); log.start();
         } catch (Exception ex) { error(ex.toString()); }
     }
-    /** profile.txt to the external logs folder, replaced whole so a pull never sees half a copy. */
+    /**
+     * profile.txt to the external logs folder, replaced whole so a pull never sees half a copy.
+     * Streams, not Files.copy: that gives the copy the private file's 0600 mode, which adb cannot read.
+     */
     private void copyProfile(File shared) {
         File profile=new File(DATA,"logs/profile.txt"), part=new File(shared,"profile.txt.part");
         try {
-            java.nio.file.Files.copy(profile.toPath(),part.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            try (java.io.InputStream in=new java.io.FileInputStream(profile);
+                 java.io.OutputStream out=new java.io.FileOutputStream(part)) {
+                byte[] buffer=new byte[1<<16]; int n;
+                while ((n=in.read(buffer))>0) out.write(buffer,0,n);
+            }
             if (!part.renameTo(new File(shared,"profile.txt"))) part.delete();
         } catch (Exception ex) {
             android.util.Log.w("Uncharted","profile copy: "+ex);
