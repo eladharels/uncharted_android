@@ -48,12 +48,25 @@ inline std::string CpuClocks() { return {}; }
 
 /// Hardware threads available to the process.
 inline unsigned Available() {
+#if defined(__ANDROID__)
+    // uncharted_android: the configured cores, not the affinity mask. The phone's thermal
+    // management takes a core offline now and then, and a start during such a moment read 7
+    // of 8: the draw pipe (8 or more) stayed off for the whole session, with stage A doing
+    // everything (Uncharted 1: 10.4 against 5.8 us per draw). The affinity mask is also what
+    // GOW3_BIG_CORES narrows, on the threads it applies to.
+    static const unsigned configured = [] {
+        const long n = sysconf(_SC_NPROCESSORS_CONF);
+        return n > 0 ? static_cast<unsigned>(n) : std::max(1u, std::thread::hardware_concurrency());
+    }();
+    return configured;
+#else
     cpu_set_t set;
     CPU_ZERO(&set);
     if (sched_getaffinity(0, sizeof(set), &set) == 0) {
         return std::max(1, CPU_COUNT(&set));
     }
     return std::max(1u, std::thread::hardware_concurrency());
+#endif
 }
 
 /// The calling thread only runs on otherwise idle cores (falls back to the lowest nice level).

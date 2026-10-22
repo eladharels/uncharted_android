@@ -32,7 +32,9 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
   whole process). The 5-second statistics print the cores' clocks and caps, the GPU clock and
   the process's CPU use: the phone caps the clocks at 1.5 GHz under the game's 4-5 cores of
   load. The stage-to-stage waits sleep in the futex directly instead of libc++'s polling
-  (`sched_yield` for 60 µs per wait).
+  (`sched_yield` for 60 µs per wait). The profile records each thread's CPU time per window.
+- The draw pipe is always on for Uncharted: a core the phone had taken offline at start made
+  the renderer count 7 cores and leave the pipe off (stage A then did everything, 20 FPS).
 
 ### Fixed
 - Black screen once gameplay starts (audio playing, menu remnants frozen on screen): the arm64

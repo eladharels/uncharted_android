@@ -31,6 +31,7 @@ class Window:
         self.index, self.start_ms, self.seconds, self.frames, self.fps = index, start_ms, seconds, frames, fps
         self.maps = []
         self.threads = []  # (tid, name, samples, failed, hot, [(count, [addrs])])
+        self.cpu = {}  # tid -> (user_ms, sys_ms) over the window
 
 
 def parse(path):
@@ -61,6 +62,9 @@ def parse(path):
             elif kind == "S" and thread is not None:
                 parts = rest.split()
                 thread[5].append((int(parts[0]), [int(a, 16) for a in parts[1:]]))
+            elif kind == "C" and window is not None:
+                parts = rest.split()
+                window.cpu[int(parts[0])] = (int(parts[1]), int(parts[2]))
     for w in windows:
         w.maps.sort(key=lambda m: m.start)
         # Profiles from before the profiler stripped pointer-authentication bits: a saved
@@ -254,6 +258,23 @@ def main():
         print("  %d: t=%.0fs, %.1fs, %d frames, %.1f FPS, %d samples, %d threads"
               % (w.index, w.start_ms / 1000.0, w.seconds, w.frames, w.fps, total, len(w.threads)))
     print()
+    # CPU time per thread over each window (exact, from /proc): where the process's cores go.
+    for w in windows:
+        if not w.cpu or w.seconds <= 0:
+            continue
+        names = {t[0]: t[1] for t in w.threads}
+        rows = sorted(w.cpu.items(), key=lambda kv: -(kv[1][0] + kv[1][1]))
+        user = sum(v[0] for v in w.cpu.values())
+        sys_ = sum(v[1] for v in w.cpu.values())
+        wall = w.seconds * 1000.0
+        print("== window %d CPU time: %.2f cores (user %.2f, kernel %.2f) over %d threads"
+              % (w.index, (user + sys_) / wall, user / wall, sys_ / wall, len(w.cpu)))
+        for tid, (u, s) in rows[:24]:
+            if u + s == 0:
+                break
+            print("  %5.2f cores  user %5.2f  kernel %5.2f  %d %s"
+                  % ((u + s) / wall, u / wall, s / wall, tid, names.get(tid, "?")))
+        print()
     for w in windows:
         if args.window is not None and w.index != args.window:
             continue

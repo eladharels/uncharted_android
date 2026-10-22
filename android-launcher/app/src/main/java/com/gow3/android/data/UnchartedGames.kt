@@ -46,6 +46,9 @@ object UnchartedGames {
         // without, 5-7 with; frames of 2,000 draws from 50-67 ms to the 30 FPS cap. "2" in
         // uncharted-env.txt extends it to the whole process.
         "GOW3_BIG_CORES" to "1",
+        // The draw pipe (stage B) on, whatever the core count at start: without it stage A
+        // records every draw itself (measured: GOW3_DRAW_PIPE=0 14-18 FPS against 20-30).
+        "GOW3_DRAW_PIPE" to "1",
     )
 
     val GAMES = listOf(

@@ -163,7 +163,38 @@ struct ThreadSamples {
     ThreadInfo info;
     uint32_t samples = 0, failed = 0;
     Stacks stacks;
+    /// CPU time of the thread at the window's start and end (clock ticks, /proc): the exact
+    /// share of the process's CPU use, which the samples cannot give (a thread in a syscall
+    /// may be working, in mprotect or an ioctl, or asleep).
+    uint64_t user0 = 0, sys0 = 0, user1 = 0, sys1 = 0;
 };
+
+/// utime and stime of a thread, in clock ticks; false when the thread is gone.
+bool ThreadCpuTicks(int tid, uint64_t& user, uint64_t& sys) {
+    char path[64];
+    std::snprintf(path, sizeof(path), "/proc/self/task/%d/stat", tid);
+    FILE* f = std::fopen(path, "r");
+    if (!f) {
+        return false;
+    }
+    char buf[1024] = {};
+    const size_t n = std::fread(buf, 1, sizeof(buf) - 1, f);
+    std::fclose(f);
+    // "tid (comm) state ppid ..." : the fields after the last ')' are the fixed ones, utime and
+    // stime the 12th and 13th of them.
+    const char* p = n ? std::strrchr(buf, ')') : nullptr;
+    if (!p) {
+        return false;
+    }
+    unsigned long long utime = 0, stime = 0;
+    if (std::sscanf(p + 1, " %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %llu %llu", &utime,
+                    &stime) != 2) {
+        return false;
+    }
+    user = utime;
+    sys = stime;
+    return true;
+}
 
 // Reads [address, address + size) of this process; false when any of it is unmapped.
 bool ReadMemory(uint64_t address, void* out, size_t size) {
@@ -293,6 +324,11 @@ void WriteWindow(FILE* out, unsigned index, uint64_t started_ms, double seconds,
         std::replace(name.begin(), name.end(), ' ', '_');
         std::fprintf(out, "T %d %s %u %u %s\n", t.info.tid, name.c_str(),
                      t.samples, t.failed, t.info.hot ? "hot" : "cold");
+        // The thread's CPU time over the window, in milliseconds of user and kernel time.
+        static const long ticks_per_second = sysconf(_SC_CLK_TCK) > 0 ? sysconf(_SC_CLK_TCK) : 100;
+        std::fprintf(out, "C %d %llu %llu\n", t.info.tid,
+                     static_cast<unsigned long long>((t.user1 - t.user0) * 1000 / ticks_per_second),
+                     static_cast<unsigned long long>((t.sys1 - t.sys0) * 1000 / ticks_per_second));
         std::vector<std::pair<const std::vector<uint64_t>*, uint32_t>> sorted;
         sorted.reserve(t.stacks.size());
         for (const auto& [stack, count] : t.stacks) {
@@ -335,6 +371,9 @@ void Run(Config config, std::string path) {
             threads.emplace_back();
             threads.back().info = std::move(info);
         }
+        for (auto& t : threads) {
+            ThreadCpuTicks(t.info.tid, t.user0, t.sys0);
+        }
         const uint64_t flips0 = Gow3Stats::flips.load(std::memory_order_relaxed);
         const auto started = std::chrono::steady_clock::now();
         const uint64_t started_ms = static_cast<uint64_t>(
@@ -361,6 +400,12 @@ void Run(Config config, std::string path) {
         const double seconds =
             std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
         const uint64_t flips = Gow3Stats::flips.load(std::memory_order_relaxed) - flips0;
+        for (auto& t : threads) {
+            if (!ThreadCpuTicks(t.info.tid, t.user1, t.sys1)) {
+                t.user1 = t.user0;
+                t.sys1 = t.sys0;
+            }
+        }
         WriteWindow(out, index, started_ms, seconds, flips, threads);
         uint64_t total = 0;
         for (const auto& t : threads) {

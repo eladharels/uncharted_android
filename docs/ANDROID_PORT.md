@@ -254,6 +254,19 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    the precise readbacks (each a TLB shootdown across the cores). A CPU profile
    (`GOW3_PROFILE=1`) with the clock line says where the 4-5 cores go. The earlier long
    sessions (9-12 µs per draw throughout) were all capped ones.
+   **Two more findings (same day, builds 3637b9d):** the futex waits did not lower the CPU
+   use (4.2-4.9 cores before and after), so the kernel time is elsewhere (page faults and
+   `mprotect` of the readbacks, the driver's ioctls); the profile now records every thread's
+   CPU time per window (`C` lines, the table at the top of the report) to attribute it
+   exactly. And the run without the env file ran with the draw pipe off: the phone had a
+   core offline at start (thermal), `Available()` read 7, and the pipe needs 8. On Android
+   `Available()` is now the configured core count and `GOW3_DRAW_PIPE=1` is in the Uncharted
+   defaults. In the profile, stage A's largest wait (10-25% of its time at 15 FPS) is the
+   precise readback of a GPU-written buffer bound as a constant (`ResolveHostCopy` →
+   `ReadMemory`, draining the pipe and waiting for the GPU) at compute dispatches and
+   draws: a GPU-to-CPU-to-GPU round trip for data that never needed to leave the GPU. A
+   GPU-side copy into the constant ring for GPU-written windows is the next lever; it is
+   also what Uncharted 2's train prologue (1,000 dispatches per frame) is waiting on.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.
