@@ -40,6 +40,7 @@ inline void MakeBackground() {
 
 /// Phones only (below).
 inline void PreferBigCores(const char*) {}
+inline void PreferBigCoresForProcess() {}
 #else
 
 /// Hardware threads available to the process.
@@ -60,20 +61,27 @@ inline void MakeBackground() {
     }
 }
 
-/// uncharted_android: GOW3_BIG_CORES=1 keeps the calling thread (the renderer's stages) on the
-/// cores with the highest clock. A phone's scheduler places threads by their utilization, and a
-/// stage that is busy in short bursts between waits looks light to it: it may land on a little
-/// core, where each burst takes about twice as long. The big cores are those whose maximum
-/// frequency is at least 80% of the fastest core's (a Snapdragon 8 Gen 3: the prime core and
-/// the five performance cores, not the two efficiency cores). Off by default; logs once.
-inline void PreferBigCores(const char* who) {
-    static const bool wanted = [] {
+/// uncharted_android: GOW3_BIG_CORES keeps threads on the cores with the highest clock. A
+/// phone's scheduler places threads by their utilization, and a renderer stage that is busy in
+/// short bursts between waits looks light to it: it may land on a little core, where each burst
+/// takes about twice as long (Galaxy S24 Ultra, Uncharted 1: 7-12 us per draw on the command
+/// thread without, 5-7 with; frames of 2,000 draws from 50-67 ms to the 30 FPS cap). The big
+/// cores are those whose maximum frequency is at least 80% of the fastest core's (a Snapdragon
+/// 8 Gen 3: the prime core and the five performance cores, not the two efficiency cores).
+///   1: the renderer's threads (command processor, draw recording, Vulkan recording, ring copy)
+///   2: the whole process: the main thread at GPU initialization, inherited by every thread
+///      created from then on (the game's own included); the renderer's threads as with 1.
+/// Logs the chosen cores once.
+inline unsigned BigCoresLevel() {
+    static const unsigned level = [] {
         const char* env = std::getenv("GOW3_BIG_CORES");
-        return env && env[0] == '1';
+        return env && env[0] >= '1' && env[0] <= '9' ? unsigned(env[0] - '0') : 0u;
     }();
-    if (!wanted) {
-        return;
-    }
+    return level;
+}
+
+/// The big cores' set; empty when there is no distinction (or no cpufreq information).
+inline const cpu_set_t& BigCores() {
     static const cpu_set_t big = [] {
         cpu_set_t set;
         CPU_ZERO(&set);
@@ -108,17 +116,36 @@ inline void PreferBigCores(const char* who) {
                         cores.size());
             CPU_ZERO(&set);
         } else {
-            std::printf("Big cores: renderer threads kept on cores %s (%.2f GHz and up, of %zu; "
-                        "GOW3_BIG_CORES=1)\n",
-                        list.c_str(), fastest * 0.8 / 1e6, cores.size());
+            std::printf("Big cores: %s kept on cores %s (%.2f GHz and up, of %zu; GOW3_BIG_CORES=%u)\n",
+                        BigCoresLevel() >= 2 ? "the whole process" : "renderer threads",
+                        list.c_str(), fastest * 0.8 / 1e6, cores.size(), BigCoresLevel());
         }
         return set;
     }();
+    return big;
+}
+
+/// Level 1 and up: the calling thread (one of the renderer's) stays on the big cores.
+inline void PreferBigCores(const char* who) {
+    if (BigCoresLevel() == 0) {
+        return;
+    }
+    const cpu_set_t& big = BigCores();
     if (CPU_COUNT(&big) == 0) {
         return;
     }
     if (sched_setaffinity(0, sizeof(big), &big) != 0) {
         std::printf("Big cores: sched_setaffinity failed for %s (errno %d)\n", who, errno);
+    }
+}
+
+/// Level 2: the calling thread (the process's main thread, at GPU initialization) and, by
+/// inheritance, every thread it creates from now on.
+inline void PreferBigCoresForProcess() {
+    if (BigCoresLevel() >= 2) {
+        PreferBigCores("the main thread");
+    } else if (BigCoresLevel() == 1) {
+        (void)BigCores(); // the log line at start-up rather than at the first renderer thread
     }
 }
 #endif

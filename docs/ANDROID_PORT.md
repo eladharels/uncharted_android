@@ -223,6 +223,12 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    scheduler reads their burst-and-wait pattern as light load). The driver build itself is not
    a lever: the `8G2-OneUI` variant is the packager's Standard build plus a flag for the
    Adreno 740, and the phone's own driver is not supported by the renderer.
+   **Measured (same day):** the GPU timer at 540p: busy 9-21 ms per frame (27-48% of the
+   frame), idle the rest; `TU_DEBUG` tests therefore skipped at 540p. `GOW3_BIG_CORES=1`: the
+   command thread from 7-12 to 5-7 µs per draw, frames of 1,850-2,250 draws from 50-67 ms to
+   the 30 FPS cap (33.3 ms median), 24-31 FPS throughout the boat section; now the default.
+   The frame times are quantized to vblank multiples (33.3, 50, 66.7 ms) by the game's own
+   pacing, so the FPS figures move in steps of 30, 20, 15.
 1. **Uncharted 1, recording thread (stage B), 8.5-9 µs per draw.** Profile it on the device
    (a self-profiling mode: bundle simpleperf from the NDK, record a few seconds from the
    overlay, export with the logs) and cut the per-draw cost: resource binding (3.3 µs),
@@ -266,9 +272,11 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
   `android-game.log`. Besides the port's `GOW3_*` options it passes the Turnip driver's:
   `TU_DEBUG` (`sysmem` forces direct rendering, `gmem` tiled, `nolrz`, `noubwc`, several
   comma-separated), `FD_DEV_FEATURES`, `IR3_SHADER_DEBUG` and `MESA_*`.
-- `GOW3_BIG_CORES=1`: the command processor, the draw recording, Vulkan recording and ring
-  copy threads are kept on the cores whose maximum clock is at least 80% of the fastest
-  core's (`Big cores:` line in the log). Off by default.
+- `GOW3_BIG_CORES` (default 1 for Uncharted): the command processor, the draw recording,
+  Vulkan recording and ring copy threads are kept on the cores whose maximum clock is at
+  least 80% of the fastest core's (`Big cores:` line in the log). `2` extends it to the whole
+  process (the main thread at GPU initialization, inherited by the game's threads); an empty
+  value in `uncharted-env.txt` turns it off.
 
 - In-app: **About → Export logs** (`android-game.log`, the previous run's log, logcat).
 - `GOW3_FEX_LOG=1` prints FEXCore's own log.

@@ -40,6 +40,12 @@ object UnchartedGames {
         // copies were a sixth of the command thread's time after the GPU-only ones stopped
         // draining; the pipe runs dry about seven times per frame otherwise.
         "GOW3_HLE_INORDER_GFX" to "1", "GOW3_HLE_PRECISE_WAIT" to "1",
+        // The renderer's threads stay on the big cores (gow3_threads.h): the scheduler read
+        // their burst-and-wait pattern as light load and ran them on the efficiency cores part
+        // of the time. Galaxy S24 Ultra, Uncharted 1: 7-12 us per draw on the command thread
+        // without, 5-7 with; frames of 2,000 draws from 50-67 ms to the 30 FPS cap. "2" in
+        // uncharted-env.txt extends it to the whole process.
+        "GOW3_BIG_CORES" to "1",
     )
 
     val GAMES = listOf(

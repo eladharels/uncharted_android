@@ -13,13 +13,13 @@ runtime, the shadPS4-based renderer, audio, input) is native ARM64 code.
 
 | Game | Executable | Android |
 |---|---|---|
-| Uncharted: Drake's Fortune | `eboot.bin` | Playable, 20-30 FPS at 540p |
-| Uncharted 2: Among Thieves | `big2-ps4_Shipping.elf` | Playable, 20-30 FPS at 540p |
-| Uncharted 3: Drake's Deception | `big3-ps4_Shipping.elf` | Playable, 20-30 FPS at 540p |
+| Uncharted: Drake's Fortune | `eboot.bin` | Playable, 24-31 FPS at 540p |
+| Uncharted 2: Among Thieves | `big2-ps4_Shipping.elf` | Runs; the train prologue is slow (see Tips) |
+| Uncharted 3: Drake's Deception | `big3-ps4_Shipping.elf` | Starts; not played far on Android yet |
 
 The default render resolution is 540p (Settings → Render resolution; 720p and native 1080p are
 slower, and 720p draws the controller-hint panel black). Tested on a Samsung Galaxy S24 Ultra (Snapdragon 8 Gen 3, Adreno 750, Android 16 / One UI) with
-dump CUSA02344 v01.00, the Mesa Turnip driver `v27.0.0-20261020-r4-8G2-OneUI`, a 30 FPS limit.
+dump CUSA02344 v01.00, the Mesa Turnip driver `v27.0.0-20261021-r4-8G2-OneUI`.
 Other Adreno phones should work but have not been tried; Mali and other non-Adreno GPUs are not
 supported (the port relies on Turnip). Reports from other devices are welcome (see
 [Reporting a problem](#reporting-a-problem)).
@@ -64,6 +64,9 @@ Controls: on-screen buttons, or a Bluetooth/USB controller (map its buttons in
   Turnip build (Purple Turnip, K11MCH1) from the driver list.
 - The launcher keeps your settings in `gow3.ini` in the app's private folder; saves are exported
   and imported from **About → Save data**.
+- **Known issues:** Uncharted 2's train prologue runs at 5-15 FPS (800-1,000 compute dispatches
+  per frame; under investigation) and once lost the GPU there; at 720p Uncharted 1 draws the
+  controller-hint panel as a black box (540p and 1080p are fine).
 
 ### Reporting a problem
 

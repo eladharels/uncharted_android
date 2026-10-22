@@ -5,6 +5,7 @@
 #include "gow3_settings.h"
 #include "gow3_copy.h"
 #include "gow3_profiler.h"
+#include "gow3_threads.h"
 #ifndef _WIN32
 #include <sys/resource.h>
 #endif
@@ -269,6 +270,7 @@ extern "C" int gow3gpu_init(const Gow3GpuConfig* config) {
     std::printf("GOW3_NATIVE_FIX_9D0F51C_VIBRATION=active\n");
     Gow3Settings::Load();
     Gow3Profiler::Start(); // uncharted_android: GOW3_PROFILE
+    Gow3Threads::PreferBigCoresForProcess(); // uncharted_android: GOW3_BIG_CORES=2
 #ifdef GOW3_PGO_GENERATE
     StartProfileWriter();
 #endif
