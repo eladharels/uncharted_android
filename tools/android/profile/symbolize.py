@@ -168,7 +168,7 @@ class Symbolizer:
 WAIT_HINTS = ("libc.so", "libc++_shared.so", "[vdso]")
 
 
-def report(window, thread, symbolizer, top):
+def report(window, thread, symbolizer, top, stacks_to_print=0):
     tid, name, samples, failed, hot, stacks = thread
     if samples == 0:
         return
@@ -214,6 +214,13 @@ def report(window, thread, symbolizer, top):
         print("-- in libc/libc++ (waits, syscalls, locks), by the first frame of ours")
         for n, c in wait_counts.most_common(top // 2):
             print("  %5.1f%%  %s" % (100.0 * c / samples, n))
+    if stacks_to_print:
+        print("-- most frequent stacks (leaf first)")
+        for count, frames in sorted(stacks, key=lambda s: -s[0])[:stacks_to_print]:
+            print("  %5.1f%%" % (100.0 * count / samples))
+            chain = [names[frames[0]]] + [names[f - 1] for f in frames[1:]]
+            for n in chain:
+                print("        %s" % n)
     print()
 
 
@@ -225,6 +232,7 @@ def main():
     ap.add_argument("--thread", help="only threads whose name contains this")
     ap.add_argument("--top", type=int, default=40)
     ap.add_argument("--min-samples", type=int, default=20, help="skip threads with fewer samples")
+    ap.add_argument("--stacks", type=int, default=0, help="also print the N most frequent full stacks per thread")
     args = ap.parse_args()
     windows = parse(args.profile)
     if not windows:
@@ -247,7 +255,7 @@ def main():
                 continue
             if t[2] < args.min_samples:
                 continue
-            report(w, t, symbolizer, args.top)
+            report(w, t, symbolizer, args.top, args.stacks)
     return 0
 
 

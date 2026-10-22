@@ -54,7 +54,7 @@ jobs:
           export LLVM_SYMBOLIZER="$sym"
           echo "${{ steps.find.outputs.dirs }}" | while read -r dir; do
             [ -n "$dir" ] || continue
-            python3 tools/android/profile/symbolize.py "$dir/profile.txt" --symbols symbols --top 60 \
+            python3 tools/android/profile/symbolize.py "$dir/profile.txt" --symbols symbols --top 60 --stacks 12 \
               > "$dir/report.txt" 2> "$dir/report.err" || true
             ls -la "$dir"
           done
