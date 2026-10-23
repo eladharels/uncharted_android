@@ -47,6 +47,13 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
 - `GOW3_JOB_WAIT_US` (default 1000): the job workers' condition wait is shortened from 10 ms.
   Measured (Uncharted 2 gameplay): 30 FPS at 2.2 cores, against 24.8 FPS at 5.0 cores with the
   old patch (the old-patch run on a hotter phone); 250 us 27 FPS, 3000 us 26 FPS.
+- A buffer descriptor with a format the shader translator cannot handle (a reserved one, read
+  from memory still being written) reads as zero instead of stopping the game.
+- `GOW3_SHADER_DUMP_DIR`: where `GOW3_DUMP_SHADERS=1` writes (the app's external folder on
+  Android, so adb can pull the dumps from a release build).
+- Finding: 5 of 7 GPU hangs are one compute-then-full-screen-draw pair (`cs 1e8e11d0`, `ps
+  b1032a3f`), present since the first build; not caused by the job-loop change (crash-rate run:
+  old patch 2 hangs in 4 boots, new patch 0 in 5).
 - `tools/android/autorun.sh`: an unattended measured session on the phone (adb over wireless
   debugging, launcher by UI dump, Cross presses into gameplay, summary, back to the Claude app).
 - Finding (Uncharted 2 menus, 4.3 cores in use): the six game job workers take 3.5 cores, 86% of

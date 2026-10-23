@@ -189,6 +189,29 @@ static void StoreBufferFormat(IR::IREmitter& ir, const IR::Value handle, const I
     }
 }
 
+// uncharted_android: the formats LoadBufferFormat/StoreBufferFormat handle. A descriptor read from
+// memory still being written (seen in Uncharted 2: data format 15, reserved) gets the null-sharp
+// treatment below instead of stopping the game at their UNREACHABLE.
+static bool IsLowerableFormat(AmdGpu::DataFormat format) {
+    switch (format) {
+    case AmdGpu::DataFormat::Format8:
+    case AmdGpu::DataFormat::Format8_8:
+    case AmdGpu::DataFormat::Format8_8_8_8:
+    case AmdGpu::DataFormat::Format16:
+    case AmdGpu::DataFormat::Format16_16:
+    case AmdGpu::DataFormat::Format10_11_11:
+    case AmdGpu::DataFormat::Format2_10_10_10:
+    case AmdGpu::DataFormat::Format16_16_16_16:
+    case AmdGpu::DataFormat::Format32:
+    case AmdGpu::DataFormat::Format32_32:
+    case AmdGpu::DataFormat::Format32_32_32:
+    case AmdGpu::DataFormat::Format32_32_32_32:
+        return true;
+    default:
+        return false;
+    }
+}
+
 static void LowerBufferFormatInst(IR::Block& block, IR::Inst& inst, Info& info) {
     IR::IREmitter ir{block, IR::Block::InstructionList::s_iterator_to(inst)};
     const auto flags = inst.Flags<IR::BufferInstInfo>();
@@ -212,8 +235,13 @@ static void LowerBufferFormatInst(IR::Block& block, IR::Inst& inst, Info& info) 
         .num_components = AmdGpu::NumComponents(data_format),
     };
 
-    if (data_format == AmdGpu::DataFormat::FormatInvalid) {
-        LOG_WARNING(Render_Recompiler, "Skipping lowering for null buffer sharp");
+    if (data_format == AmdGpu::DataFormat::FormatInvalid || !IsLowerableFormat(data_format)) {
+        if (data_format == AmdGpu::DataFormat::FormatInvalid) {
+            LOG_WARNING(Render_Recompiler, "Skipping lowering for null buffer sharp");
+        } else {
+            LOG_WARNING(Render_Recompiler, "Unsupported buffer data format {}: read as zero",
+                        static_cast<u32>(data_format));
+        }
         if (IsBufferFormatLoad(inst)) {
             inst.ReplaceUsesWithAndRemove(
                 ir.CompositeConstruct(ir.Imm32(0.f), ir.Imm32(0.f), ir.Imm32(0.f), ir.Imm32(0.f)));

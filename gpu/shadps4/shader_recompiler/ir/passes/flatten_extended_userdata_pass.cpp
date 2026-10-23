@@ -230,7 +230,7 @@ namespace {
 static void DumpSrtProgram(const Shader::Info& info, const u8* code, size_t codesize) {
     using namespace Common::FS;
 
-    const auto dump_dir = GetUserPath(PathType::ShaderDir) / "dumps";
+    const auto dump_dir = GetShaderDumpDir(); // uncharted_android: GOW3_SHADER_DUMP_DIR
     if (!std::filesystem::exists(dump_dir)) {
         std::filesystem::create_directories(dump_dir);
     }

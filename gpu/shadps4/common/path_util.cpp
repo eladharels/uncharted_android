@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2024-2026 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <cstdlib>
 #include <fstream>
 #include <unordered_map>
 #include "common/logging/log.h"
@@ -197,6 +198,11 @@ void SetUserPath(PathType shad_path, const fs::path& new_path) {
     }
 
     UserPaths.insert_or_assign(shad_path, new_path);
+}
+
+fs::path GetShaderDumpDir() {
+    const char* dir = std::getenv("GOW3_SHADER_DUMP_DIR");
+    return dir && dir[0] ? fs::path{dir} : GetUserPath(PathType::ShaderDir) / "dumps";
 }
 
 std::optional<fs::path> FindGameByID(const fs::path& dir, const std::string& game_id,

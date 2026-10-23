@@ -358,7 +358,11 @@ constexpr NumberConversion MapNumberConversion(const NumberFormat num_fmt,
         case DataFormat::Format16_16_16_16:
             return NumberConversion::Sint16ToSnormNz;
         default:
-            UNREACHABLE_MSG("data_fmt = {}", u32(data_fmt));
+            // uncharted_android: a format SnormNz has no meaning for (seen: 15, a reserved data
+            // format, in a descriptor read while the SRT walker was faulting, so garbage) stopped
+            // the whole game. The hardware reads nothing useful from such a descriptor and goes
+            // on; so does this: no conversion.
+            return NumberConversion::None;
         }
     }
     default:

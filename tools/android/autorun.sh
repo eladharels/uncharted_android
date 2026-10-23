@@ -85,11 +85,12 @@ while :; do
     if game_log | grep -q "^STOP:"; then log "the game stopped (crash) at ${now}s"; break; fi
     draws=$(last_draws); draws=${draws:-0}
     if ((gameplay && !in_game)); then
-        # The title menu draws 100-400 per frame; Cross twice (past "press start", then Continue)
+        # The logos draw 9-25 per frame, the title menus 80-90 (Uncharted 1) and 140-300
+        # (Uncharted 2); gameplay 450 and up. Cross twice (past "press start", then Continue)
         # starts the game, after which it loads: press again only if 30 s bring no gameplay.
         if ((draws >= 400)); then in_game=$now; log "gameplay at ${now}s ($draws draws/frame) after $presses presses"
         elif ((now >= 240)); then log "no gameplay after 4 minutes ($draws draws/frame): measuring where it is"; in_game=$now
-        elif ((draws >= 100 && (presses % 2 == 1 || now - last_press >= 30))); then
+        elif ((draws >= 30 && (presses % 2 == 1 || now - last_press >= 30))); then
             press_cross; presses=$((presses + 1)); last_press=$now; log "Cross ($presses) at ${now}s, $draws draws/frame"
         fi
     elif ((!gameplay && !in_game && now >= 30)); then in_game=$now
@@ -99,4 +100,7 @@ done
 game_log | grep -E "^Uncharted: |^Job spin|^uncharted-env|^Frame stats|process CPU|^Guest sync/s|^STOP:|Device lost|Unreachable" |
     sed -E 's/^(Frame stats: [0-9.]+ FPS).*( [0-9]+ draws\/frame).*/\1;\2/; s/^CPU clocks.*(capped to [0-9. ]+).*(process CPU.*)/  \1 \2/'
 mkdir -p "$out" && "$ADB" pull "/sdcard/Android/data/$pkg/files/logs/." "$out" | tail -1
+# Shader dumps, when the run had GOW3_DUMP_SHADERS=1 GOW3_SHADER_DUMP_DIR=<that folder>.
+shaders="/sdcard/Android/data/$pkg/files/shaders"
+if "$ADB" shell "[ -d $shaders ]"; then mkdir -p "$out/shaders" && "$ADB" pull "$shaders/." "$out/shaders" | tail -1; fi
 log "logs in $out"

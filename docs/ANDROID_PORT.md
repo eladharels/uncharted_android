@@ -337,6 +337,26 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    against 5.0 cores, and that is the heat. 1000 us stays the default. Next: a long session
    (10+ minutes) with the default, to see when the caps arrive now and what FPS holds once they
    do; and a repeat of 1000 against 250 on a phone at the same temperature.
+   **GPU hangs (2026-10-24, every device-lost log of 2026-10-22/23 compared):** 5 of 7 are one
+   place, in both games and every build from the first (427ee34): the GPU finishes compute
+   `cs 1e8e11d0` (30x68x1 groups: 32x8-pixel tiles over the 960x540 render size) and then does
+   not start, or does not finish, a full-screen draw `vs 4f38cbc0 ps b1032a3f` (4 indices), in the
+   menus, at boot or minutes in. So it predates the job-loop changes; in an unattended crash-rate
+   run (Uncharted 1 boots, 9 of 12 done) the old one-check patch hung 2 times in 4 and the new
+   patch 0 in 5. The shape (a per-tile compute pass, then a full-screen shader reading its output)
+   fits a pixel shader looping over per-tile data that is not yet visible to it, garbage
+   counts making the loop run until the GPU is declared lost. Suspect: the hazard tracking in
+   `Runtime::AccessBuffer`/`IsBufferAccessed` is per `VideoCore::Buffer`; a write through one
+   buffer object and a read of the same memory through another (overlapping buffer, buffer-backed
+   image) gets no barrier. Not proven: next is to dump both shaders (`GOW3_DUMP_SHADERS=1
+   GOW3_SHADER_DUMP_DIR=/storage/emulated/0/Android/data/com.uncharted.android/files/shaders` in
+   `uncharted-env.txt`; `autorun.sh` pulls the folder; the `.irprogram.txt` files are readable
+   without a GCN disassembler, which the Windows LLVM build lacks) and see what the compute pass
+   writes and how the pixel shader reads and loops. The other two hangs (Uncharted 1, draws
+   `vs 4e5c83b4 ps 67078c4e` at boot and `vs c4e9ae30 ps b2415af8` in gameplay) are single
+   cases. The `data_fmt = 15` stop (Uncharted 2) was a reserved buffer format in a descriptor read
+   while the SRT walker faulted: such a descriptor now reads as zero instead of stopping the game
+   (`MapNumberConversion`, `LowerBufferFormatInst`).
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.

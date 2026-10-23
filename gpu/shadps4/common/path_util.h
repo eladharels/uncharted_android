@@ -108,6 +108,13 @@ constexpr auto LOG_FILE = "shad_log.txt";
 void SetUserPath(PathType user_path, const std::filesystem::path& new_path);
 
 /**
+ * uncharted_android: where shader dumps go (GOW3_DUMP_SHADERS): GOW3_SHADER_DUMP_DIR when set (on
+ * Android the app's external folder, which adb can pull from a release build), else the user
+ * shader folder's "dumps".
+ */
+[[nodiscard]] std::filesystem::path GetShaderDumpDir();
+
+/**
  * Recursively searches for an installed game by its ID.
  * Limits search depth to prevent excessive filesystem traversal.
  *
