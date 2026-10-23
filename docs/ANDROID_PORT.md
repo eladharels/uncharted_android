@@ -308,6 +308,18 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    cores of kernel time. Next: which lock and which guest code (the caller's guest address,
    sampled in `mutex_lock`, against the executable in the dump), then a patch of that loop
    like `GOW3_JOB_SPIN`'s, or a cheaper host path for that one mutex.
+   **Found (build e48ee3f):** every sampled lock is the job workers' own, one mutex, taken at
+   Uncharted 2 `0xb3c4e7` (the call right after `GOW3_JOB_SPIN`'s compare). The loop tests the
+   "may sleep" byte (`[manager+0x59]`) twice: before the spin count (the je `GOW3_JOB_SLEEP`
+   removes) and again after locking (`found + 0xa3` in all three games), where a clear byte skips
+   the 10 ms condition wait and goes straight to the unlock; and the spin count is not reset on
+   that path. In the states where the game clears the byte (the menus and gameplay), the
+   patched workers therefore lock and unlock on every pass with no pause and no wait: our own
+   patch turned the game's PAUSE spin into a lock spin. The second je is now removed with the
+   first (`GOW3_JOB_SLEEP_WAIT=0` keeps it), so they sleep on the condition variable, which the
+   game broadcasts ~2,000 times a second in that mode. Disassembly: rebuild an ELF from the dump
+   with `scripts/prepare.py`'s `parse_self` and `llvm-objdump` (image offsets are the ELF's
+   virtual addresses).
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.

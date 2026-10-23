@@ -288,7 +288,15 @@ static void patch_eop_tick_wait(uint64_t image_size) {
  * GOW3_JOB_SLEEP=1 (ucndc, off): the game clears that byte during gameplay (function at UC3
  * 0xd96440, which also drops the workers to the lowest priority, 767) and the workers then spin
  * with PAUSE forever, never blocking; it is set in cutscenes and loading, where the game's CPU
- * use falls to ~5%. This removes the je, so the workers always spin N times and then block. */
+ * use falls to ~5%. This removes the je, so the workers always spin N times and then block.
+ * uncharted_android: the loop tests the byte a second time after it has locked the manager's mutex
+ * (found + 0xa3 in all three games: cmp byte [rax+0x59],0 ; je over the 10 ms condition wait),
+ * and the spin count is not reset on that path. With only the first je removed, a worker whose
+ * count has run out locks and unlocks the mutex on every pass without ever waiting: on the phone
+ * 1.6-2.5 million locks a second, a fifth of them colliding, each collision a futex wait and wake
+ * (1.5-2.5 cores of kernel time, the job workers 3.5 of the process's 4.3 cores; 2026-10-23).
+ * So the second je goes too and the workers sleep on the condition variable, which the game
+ * broadcasts some 2,000 times a second in that mode. GOW3_JOB_SLEEP_WAIT=0 keeps it (comparison). */
 static void patch_job_spin(uint64_t image_size, const char *value, int sleep) {
     char *end = NULL;
     long n = value ? strtol(value, &end, 0) : 1000;
@@ -305,9 +313,18 @@ static void patch_job_spin(uint64_t image_size, const char *value, int sleep) {
     if (count != 1) { printf("Job spin: worker wait loop %s\n", count ? "found more than once, left alone" : "not found"); return; }
     uint32_t spins = (uint32_t)n;
     memcpy(image + found + 3, &spins, 4);
-    if (sleep) { image[found - 2] = 0x66; image[found - 1] = 0x90; } /* je -> 2-byte nop */
-    printf("Job spin: job workers spin %ld times before they sleep (was 1000)%s, at %#" PRIx64 "\n", n,
-           sleep ? ", and may sleep in gameplay too" : "", found);
+    const char *second = "";
+    if (sleep) {
+        image[found - 2] = 0x66; image[found - 1] = 0x90; /* je -> 2-byte nop */
+        static const unsigned char wait_check[] = {0x80, 0x78, 0x59, 0x00, 0x74, 0x7e};
+        const char *keep = getenv("GOW3_JOB_SLEEP_WAIT");
+        if (keep && keep[0] == '0') second = "; second check kept (GOW3_JOB_SLEEP_WAIT=0)";
+        else if (found + 0xa3 + sizeof(wait_check) > image_size ||
+                 memcmp(image + found + 0xa3, wait_check, sizeof(wait_check))) second = "; second check not found, left alone";
+        else { image[found + 0xa3 + 4] = 0x66; image[found + 0xa3 + 5] = 0x90; second = "; they wait on the condition variable too"; }
+    }
+    printf("Job spin: job workers spin %ld times before they sleep (was 1000)%s%s, at %#" PRIx64 "\n", n,
+           sleep ? ", and may sleep in gameplay too" : "", second, found);
 }
 /* GOW3_UC3_RES=WxH (ucndc, off; Opus's resolution study, uc3/resolucao/estudo-resolucao.md):
  * Uncharted 3's video settings (a structure at 0x18c6b34, written by the function at 0xe39690)
