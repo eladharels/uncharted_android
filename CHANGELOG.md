@@ -45,6 +45,8 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
   (2 million locks a second on the phone); `GOW3_JOB_SLEEP_WAIT=0` keeps the old patch. Measured
   (Uncharted 2 gameplay): 4.2-5.0 cores → 1.4, but 25 → 16 FPS (the 10 ms waits time out).
 - `GOW3_JOB_WAIT_US` (default 1000): the job workers' condition wait is shortened from 10 ms.
+  Measured (Uncharted 2 gameplay): 30 FPS at 2.2 cores, against 24.8 FPS at 5.0 cores with the
+  old patch (the old-patch run on a hotter phone); 250 us 27 FPS, 3000 us 26 FPS.
 - `tools/android/autorun.sh`: an unattended measured session on the phone (adb over wireless
   debugging, launcher by UI dump, Cross presses into gameplay, summary, back to the Claude app).
 - Finding (Uncharted 2 menus, 4.3 cores in use): the six game job workers take 3.5 cores, 86% of

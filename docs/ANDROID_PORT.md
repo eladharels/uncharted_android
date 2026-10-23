@@ -329,6 +329,14 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    same in all three games): the workers wake every N us. One of three new-patch runs ended in a
    GPU hang 26 s in, at boot (stuck after dispatch cs `1e8e11d0`, before draw ps `b1032a3f`); the
    other two and both old-patch runs did not: not yet known whether it is related.
+   **Sweep (build 9a652d9, same scene, 60 s each, in this order):** `GOW3_JOB_WAIT_US=1000` (the
+   default) **30.0 FPS steady, 2.2 cores** (kernel 0.4; ~4,500 waits/s, 3,800 timed out;
+   108,000 locks/s), clocks uncapped (cool phone); 250 us 27 FPS, 2.4 cores, caps 2.5 GHz; 3000 us
+   26 FPS, 2.2 cores, caps 2.5 GHz; old patch 24.8 FPS, 5.0 cores (kernel 1.5), caps 1.5-1.7 GHz.
+   The order heated the phone, so part of the FPS spread is the caps; the CPU use is not: 2.2
+   against 5.0 cores, and that is the heat. 1000 us stays the default. Next: a long session
+   (10+ minutes) with the default, to see when the caps arrive now and what FPS holds once they
+   do; and a repeat of 1000 against 250 on a phone at the same temperature.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.
