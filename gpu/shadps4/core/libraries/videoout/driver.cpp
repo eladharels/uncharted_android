@@ -41,6 +41,9 @@
 
 extern std::unique_ptr<Vulkan::Presenter> presenter;
 extern std::unique_ptr<AmdGpu::Liverpool> liverpool;
+#ifndef _WIN32
+extern "C" __attribute__((weak)) void runtime_mutex_stats(double seconds); // src/runtime_mutex.c
+#endif
 
 namespace Vulkan {
 extern std::atomic<u64> g_gow3_compile_ns;
@@ -700,6 +703,14 @@ void VideoOutDriver::Flip(const Request& req) {
             if (const std::string clocks = Gow3Threads::CpuClocks(); !clocks.empty()) {
                 std::printf("%s\n", clocks.c_str());
             }
+            // uncharted_android: the guest's mutex and condition-variable traffic (src/runtime_mutex.c,
+            // in the executable; weak so a host without the runtime skips it).
+#ifndef _WIN32
+            if (runtime_mutex_stats) {
+                std::fflush(stdout);
+                runtime_mutex_stats(window);
+            }
+#endif
             intervals.clear();
             window_start = now;
             frames = 0;

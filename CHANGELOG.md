@@ -33,7 +33,11 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
   (`UnchartedGame`); `tools/android/pull-logs.ps1` pulls them. The app is `profileable` from the
   shell for simpleperf and perfetto.
 - Guest mutexes spin before they block (`GOW3_MUTEX_SPIN`, default 200 tries; 0 = off), as the
-  PS4's libthr does, instead of a futex wait and wake at every collision.
+  PS4's libthr does, instead of a futex wait and wake at every collision. Measured worse (kernel
+  2.2 → 0.3 cores, user 2.0 → 4.9, total +0.5-1 core in the Uncharted 2 menus): the default is
+  now 0.
+- `Guest sync/s` line in the 5-second statistics: guest mutex locks (and contended ones),
+  condition-variable waits, timeouts, signals and broadcasts per second.
 - Finding (Uncharted 2 menus, 4.3 cores in use): the six game job workers take 3.5 cores, 86% of
   their samples in futex calls of one contended guest mutex (`runtime_mutex.c`); the renderer ~0.5.
   `GOW3_JOB_SPIN=0` does not change it (menus and gameplay). Two new GPU crashes seen with that

@@ -289,6 +289,15 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    33% in `mutex_unlock`. The contention is not in the spin loop the patch shortens: the
    workers collide on the lock before they get there, in the menus and in gameplay alike. The
    lever is the guest mutex itself.
+   **Measured, same day: spinning in the guest mutex makes it worse** (`GOW3_MUTEX_SPIN=200`,
+   build 48d346b, same Uncharted 2 menus at 30 FPS): kernel time fell from 2.2 to 0.2-0.3 cores,
+   but user time rose from 2.0 to 4.5-5.0, the process from 4.2-4.3 to 4.8-5.8 cores; each
+   worker 0.63-0.83 cores, nearly all of it in the trylock loop. The lock is contended without
+   pause, so a spin only turns the futex sleeps (half of the workers' samples before) into busy
+   waiting: the futex path was throttling them. The cost is the workers' polling itself, not the
+   price of a collision. Next: find what keeps them on that lock (the broadcasts the game sends
+   tens of thousands of times a second waking all six, or a poll under the lock): count guest
+   lock, broadcast and wait calls per second in the 5-second statistics.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.
@@ -352,10 +361,13 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
   stage B's spin before it sleeps; `GOW3_PREP_WORKERS` (4) the SCHED_IDLE draw-preparation
   workers. The stage-to-stage waits (drain, host copies, ring copier) sleep in the futex
   directly (`common/futex_wait.h`), with no polling to tune.
-- `GOW3_MUTEX_SPIN` (200): a contended guest mutex (`scePthreadMutexLock`, `pthread_mutex_lock`)
-  is tried that many times with a CPU pause before the thread blocks in the futex
-  (`src/runtime_mutex.c`); 0 blocks at once (the behaviour before 2026-10-23). The runtime's
-  exit report counts the contended locks taken while spinning and those that slept.
+- `GOW3_MUTEX_SPIN` (0; 200 only in build 48d346b, measured worse): a contended guest mutex
+  (`scePthreadMutexLock`, `pthread_mutex_lock`) is tried that many times with a CPU pause before
+  the thread blocks in the futex (`src/runtime_mutex.c`); 0 blocks at once. The runtime's exit
+  report counts the contended locks taken while spinning and those that slept.
+- `Guest sync/s: ...` with each 5-second window: the guest's mutex locks per second and how many
+  found the lock taken, condition-variable waits (and how many timed out), signals and
+  broadcasts (`runtime_mutex_stats`). For the job workers' lock traffic.
 - `GOW3_BIG_CORES` (default 1 for Uncharted): the command processor, the draw recording,
   Vulkan recording and ring copy threads are kept on the cores whose maximum clock is at
   least 80% of the fastest core's (`Big cores:` line in the log). `2` extends it to the whole

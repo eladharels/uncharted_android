@@ -19,6 +19,9 @@ extern __thread sigjmp_buf *runtime_fault_recover;
 extern __thread int runtime_fault_recover_gpu;
 /* Restarts the game (in-game settings menu, render resolution change). */
 void runtime_restart(void);
+/* Prints the guest mutex and condition-variable calls per second since the last call
+ * (runtime_mutex.c); the GPU library's 5-second statistics call it. */
+void runtime_mutex_stats(double seconds);
 /* The guest's calling convention for host functions it calls. Elsewhere than x86-64 the guest CPU
  * (guest_cpu.h) converts guest calls to the host's convention. */
 #if defined(__x86_64__)

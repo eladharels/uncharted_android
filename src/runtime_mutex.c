@@ -82,7 +82,10 @@ static int32_t ensure_mutex(GuestMutex **mutex) {
  * contended unlock then makes a wake syscall; Naughty Dog's six job workers take one lock tens of
  * thousands of times a second, and on the phone they spent 86% of their samples in those two
  * syscalls (3.5 cores, half of it kernel time). GOW3_MUTEX_SPIN=N tries the lock N times with a
- * CPU pause before blocking (default 200, about 5 us); 0 blocks at once, the old behaviour. */
+ * CPU pause before blocking; 0 (the default) blocks at once. Measured on 2026-10-23 with 200
+ * (~5 us): kernel time 2.2 -> 0.3 cores but user time 2.0 -> 4.9, the process a core busier,
+ * because the lock is contended without pause and the futex sleeps were what held the workers
+ * back. Kept for experiments. */
 static size_t spin_hits, spin_misses;
 static int mutex_spins(void) {
     static int spins = -1;
@@ -90,8 +93,8 @@ static int mutex_spins(void) {
     if (n < 0) {
         const char *value = getenv("GOW3_MUTEX_SPIN");
         char *end = NULL;
-        long parsed = value && value[0] ? strtol(value, &end, 10) : 200;
-        n = (end && *end) || parsed < 0 || parsed > 100000 ? 200 : (int)parsed;
+        long parsed = value && value[0] ? strtol(value, &end, 10) : 0;
+        n = (end && *end) || parsed < 0 || parsed > 100000 ? 0 : (int)parsed;
         __atomic_store_n(&spins, n, __ATOMIC_RELAXED);
     }
     return n;
@@ -103,19 +106,43 @@ static inline void cpu_pause(void) {
     __builtin_ia32_pause();
 #endif
 }
+/* uncharted_android: per-window counts for the 5-second statistics (runtime_mutex_stats, called
+ * from the GPU library's frame statistics): how often the guest locks, collides, waits and wakes,
+ * to see what keeps the job workers on their lock. Relaxed atomics; reset by each report. */
+static struct {
+    size_t locks, contended, cond_waits, cond_timeouts, signals, broadcasts;
+} window;
+#define COUNT(field) __atomic_fetch_add(&window.field, 1, __ATOMIC_RELAXED)
 /* A mutex the caller already holds keeps its type's answer: trylock fails with EBUSY on an
  * error-checking one and the blocking lock below reports EDEADLK; a recursive one succeeds. */
 static int lock_native(pthread_mutex_t *native) {
+    COUNT(locks);
+    int e = pthread_mutex_trylock(native);
+    if (e != EBUSY) return e;
+    COUNT(contended);
     int spins = mutex_spins();
     if (spins) {
-        for (int i = 0; i < spins; ++i) {
-            int e = pthread_mutex_trylock(native);
-            if (e != EBUSY) { if (i) ++spin_hits; return e; }
+        for (int i = 1; i < spins; ++i) {
             cpu_pause();
+            e = pthread_mutex_trylock(native);
+            if (e != EBUSY) { ++spin_hits; return e; }
         }
         ++spin_misses;
     }
     return pthread_mutex_lock(native);
+}
+void runtime_mutex_stats(double seconds) {
+    if (seconds <= 0) return;
+    size_t locks = __atomic_exchange_n(&window.locks, 0, __ATOMIC_RELAXED);
+    size_t contended = __atomic_exchange_n(&window.contended, 0, __ATOMIC_RELAXED);
+    size_t waits_ = __atomic_exchange_n(&window.cond_waits, 0, __ATOMIC_RELAXED);
+    size_t timeouts = __atomic_exchange_n(&window.cond_timeouts, 0, __ATOMIC_RELAXED);
+    size_t signals = __atomic_exchange_n(&window.signals, 0, __ATOMIC_RELAXED);
+    size_t broadcasts = __atomic_exchange_n(&window.broadcasts, 0, __ATOMIC_RELAXED);
+    printf("Guest sync/s: %.0f mutex locks, %.0f contended (%.1f%%); %.0f cond waits, %.0f timed out; "
+           "%.0f signals, %.0f broadcasts\n",
+           locks / seconds, contended / seconds, locks ? 100.0 * contended / locks : 0.0,
+           waits_ / seconds, timeouts / seconds, signals / seconds, broadcasts / seconds);
 }
 static ABI int32_t mutex_lock(GuestMutex **mutex) {
     int32_t e = ensure_mutex(mutex);
@@ -199,15 +226,17 @@ static ABI int32_t cond_wait(GuestCond **cond, GuestMutex **mutex) {
     int32_t e = ensure_cond(cond);
     if (e) return e;
     if (!mutex || (uintptr_t)*mutex < 3) return orbis_error(EINVAL);
-    ++waits;
+    ++waits; COUNT(cond_waits);
     return orbis_error(pthread_cond_wait(&(*cond)->native, &(*mutex)->native));
 }
 static int32_t cond_wait_until(GuestCond **cond, GuestMutex **mutex, const struct timespec *end) {
     int32_t e = ensure_cond(cond);
     if (e) return e;
     if (!mutex || (uintptr_t)*mutex < 3 || !end) return orbis_error(EINVAL);
-    ++waits;
-    return timed_error(pthread_cond_timedwait(&(*cond)->native, &(*mutex)->native, end));
+    ++waits; COUNT(cond_waits);
+    int r = pthread_cond_timedwait(&(*cond)->native, &(*mutex)->native, end);
+    if (r == ETIMEDOUT) COUNT(cond_timeouts);
+    return timed_error(r);
 }
 static ABI int32_t cond_timedwait(GuestCond **cond, GuestMutex **mutex, uint32_t usec) {
     struct timespec end;
@@ -217,12 +246,12 @@ static ABI int32_t cond_timedwait(GuestCond **cond, GuestMutex **mutex, uint32_t
 static ABI int32_t cond_signal(GuestCond **cond) {
     int32_t e = ensure_cond(cond);
     if (e) return e;
-    ++wakeups; return orbis_error(pthread_cond_signal(&(*cond)->native));
+    ++wakeups; COUNT(signals); return orbis_error(pthread_cond_signal(&(*cond)->native));
 }
 static ABI int32_t cond_broadcast(GuestCond **cond) {
     int32_t e = ensure_cond(cond);
     if (e) return e;
-    ++wakeups; return orbis_error(pthread_cond_broadcast(&(*cond)->native));
+    ++wakeups; COUNT(broadcasts); return orbis_error(pthread_cond_broadcast(&(*cond)->native));
 }
 /* PS4 struct timespec is {int64 sec, int64 nsec}, identical to Linux x86-64. */
 typedef struct { int64_t sec, nsec; } GuestTimespec;
