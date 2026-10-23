@@ -267,6 +267,28 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    draws: a GPU-to-CPU-to-GPU round trip for data that never needed to leave the GPU. A
    GPU-side copy into the constant ring for GPU-written windows is the next lever; it is
    also what Uncharted 2's train prologue (1,000 dispatches per frame) is waiting on.
+   **Where the cores go (2026-10-23, Uncharted 2, build 7c53eca, first profile symbolized on the
+   PC):** eight windows of a light scene (~190 draws per frame, the menus; 30 FPS throughout)
+   with the process at 4.2-4.3 cores, 2.2-2.3 of them kernel time, and the caps at 2.4-2.7 GHz
+   falling to 1.7. The six game job workers (`NdJobWorkerThread`) take 3.5 of those cores
+   (0.55-0.72 each, half kernel); the whole renderer ~0.5 (command thread, draw recording and
+   Vulkan recording ~0.1 each). Each worker's samples: 49% blocked in the futex of a guest
+   `mutex_lock` (`runtime_mutex.c:83`), 37% in the futex wake of `mutex_unlock` (`:97`), only 4-5%
+   in `cond_timedwait`, the idle wait the game meant them to use, the rest JIT code. The six
+   workers fight over one guest mutex continuously, and Bionic's `pthread_mutex` takes every
+   collision to the kernel (no spin before the futex wait, a wake syscall on every contended
+   unlock), where FreeBSD's, which the PS4's libthr is built on, spins first. That, not the
+   renderer, is the heat: the load is the same in a menu as in gameplay (4.2-5.1 cores
+   measured on 2026-10-22). Next: a short adaptive spin (trylock with a CPU `yield`) in the guest
+   `mutex_lock` before the futex wait; a quick test first without a new APK: `GOW3_JOB_SPIN=0`
+   in `uncharted-env.txt` (workers block on the condition variable at once). The same profile in
+   gameplay will tell whether the workers' share holds under load.
+   **Measured, same day: `GOW3_JOB_SPIN=0` does not help.** Uncharted 2 menus 4.3 cores (user
+   2.1, kernel 2.2), as without it; Uncharted 1 gameplay (2,650 draws per frame, 17.5 FPS, caps
+   at 1.5 GHz) 3.7-5.0 cores, the six workers 2.3 of them, each still 53% in `mutex_lock` and
+   33% in `mutex_unlock`. The contention is not in the spin loop the patch shortens: the
+   workers collide on the lock before they get there, in the menus and in gameplay alike. The
+   lever is the guest mutex itself.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.
@@ -283,11 +305,19 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
 3. **Uncharted 2, GPU hang in the train prologue** (device lost on a full-screen draw,
    ps `3371ae8d` after cs `1c3672c5` 480x1x1; happened once, not reproduced). Watch for it; if it
    repeats, dump that pixel shader and check it against native resolution.
+   **Two new GPU crashes (2026-10-23, build 7c53eca, both runs with `GOW3_JOB_SPIN=0`, so a
+   timing effect of it cannot be excluded yet):** Uncharted 2, ~2.5 minutes in, the first heavier
+   scene (503 draws per frame) after `RunSrtProgram: SRT walker load faulted; using zero`
+   warnings: `pixel_format.h:361 MapNumberConversion: Unreachable code! data_fmt = 15` (a buffer
+   format the recompiler does not map). Uncharted 1, ~4 minutes of gameplay: device lost at
+   submit, the GPU stuck on an indexed draw, vs `c4e9ae30` ps `b2415af8`, 4,779 indices (the
+   breadcrumbs in `android-game.log`). Retest both without the option before chasing them.
 4. **720p controller-hint panel** drawn black (Uncharted 1): frame-capture the panel's draw
    at 720p and compare with 1080p; likely a size the game derives from the output.
 5. Settings that were measured and do not help at 540p: `GOW3_STALE_READBACK`,
    `GOW3_READBACKS=1`, `GOW3_PREP_TRUST_A1`, `GOW3_EAGER_SUBMIT=0` (worse),
-   `GOW3_TEXTURE_HELPER=1` (worse). Do not retest without a code change behind them.
+   `GOW3_TEXTURE_HELPER=1` (worse), `GOW3_JOB_SPIN=0` (no change in CPU use, 2026-10-23). Do
+   not retest without a code change behind them.
 
 ## Debugging
 
@@ -322,6 +352,10 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
   stage B's spin before it sleeps; `GOW3_PREP_WORKERS` (4) the SCHED_IDLE draw-preparation
   workers. The stage-to-stage waits (drain, host copies, ring copier) sleep in the futex
   directly (`common/futex_wait.h`), with no polling to tune.
+- `GOW3_MUTEX_SPIN` (200): a contended guest mutex (`scePthreadMutexLock`, `pthread_mutex_lock`)
+  is tried that many times with a CPU pause before the thread blocks in the futex
+  (`src/runtime_mutex.c`); 0 blocks at once (the behaviour before 2026-10-23). The runtime's
+  exit report counts the contended locks taken while spinning and those that slept.
 - `GOW3_BIG_CORES` (default 1 for Uncharted): the command processor, the draw recording,
   Vulkan recording and ring copy threads are kept on the cores whose maximum clock is at
   least 80% of the fastest core's (`Big cores:` line in the log). `2` extends it to the whole

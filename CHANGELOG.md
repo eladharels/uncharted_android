@@ -32,6 +32,12 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
   `/sdcard/Android/data/<package>/files/logs` and the game log goes to logcat
   (`UnchartedGame`); `tools/android/pull-logs.ps1` pulls them. The app is `profileable` from the
   shell for simpleperf and perfetto.
+- Guest mutexes spin before they block (`GOW3_MUTEX_SPIN`, default 200 tries; 0 = off), as the
+  PS4's libthr does, instead of a futex wait and wake at every collision.
+- Finding (Uncharted 2 menus, 4.3 cores in use): the six game job workers take 3.5 cores, 86% of
+  their samples in futex calls of one contended guest mutex (`runtime_mutex.c`); the renderer ~0.5.
+  `GOW3_JOB_SPIN=0` does not change it (menus and gameplay). Two new GPU crashes seen with that
+  option: Uncharted 2 `MapNumberConversion` data_fmt 15, Uncharted 1 device lost (ps `b2415af8`).
 - The renderer threads are kept on the big cores (`GOW3_BIG_CORES=1`, the default; `2` for the
   whole process). The 5-second statistics print the cores' clocks and caps, the GPU clock and
   the process's CPU use: the phone caps the clocks at 1.5 GHz under the game's 4-5 cores of

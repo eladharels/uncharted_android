@@ -77,10 +77,50 @@ static int32_t ensure_mutex(GuestMutex **mutex) {
     pthread_mutex_unlock(&static_init);
     return e;
 }
+/* uncharted_android: contended guest mutexes spin before they sleep, as FreeBSD's libthr does on
+ * the PS4. Bionic's pthread_mutex_lock goes to the futex at the first collision and every
+ * contended unlock then makes a wake syscall; Naughty Dog's six job workers take one lock tens of
+ * thousands of times a second, and on the phone they spent 86% of their samples in those two
+ * syscalls (3.5 cores, half of it kernel time). GOW3_MUTEX_SPIN=N tries the lock N times with a
+ * CPU pause before blocking (default 200, about 5 us); 0 blocks at once, the old behaviour. */
+static size_t spin_hits, spin_misses;
+static int mutex_spins(void) {
+    static int spins = -1;
+    int n = __atomic_load_n(&spins, __ATOMIC_RELAXED);
+    if (n < 0) {
+        const char *value = getenv("GOW3_MUTEX_SPIN");
+        char *end = NULL;
+        long parsed = value && value[0] ? strtol(value, &end, 10) : 200;
+        n = (end && *end) || parsed < 0 || parsed > 100000 ? 200 : (int)parsed;
+        __atomic_store_n(&spins, n, __ATOMIC_RELAXED);
+    }
+    return n;
+}
+static inline void cpu_pause(void) {
+#if defined(__aarch64__)
+    __asm__ volatile("isb" ::: "memory");
+#elif defined(__x86_64__)
+    __builtin_ia32_pause();
+#endif
+}
+/* A mutex the caller already holds keeps its type's answer: trylock fails with EBUSY on an
+ * error-checking one and the blocking lock below reports EDEADLK; a recursive one succeeds. */
+static int lock_native(pthread_mutex_t *native) {
+    int spins = mutex_spins();
+    if (spins) {
+        for (int i = 0; i < spins; ++i) {
+            int e = pthread_mutex_trylock(native);
+            if (e != EBUSY) { if (i) ++spin_hits; return e; }
+            cpu_pause();
+        }
+        ++spin_misses;
+    }
+    return pthread_mutex_lock(native);
+}
 static ABI int32_t mutex_lock(GuestMutex **mutex) {
     int32_t e = ensure_mutex(mutex);
     if (e) return e;
-    e = orbis_error(pthread_mutex_lock(&(*mutex)->native));
+    e = orbis_error(lock_native(&(*mutex)->native));
     if (!e) ++locks;
     return e;
 }
@@ -255,7 +295,8 @@ uintptr_t runtime_mutex_resolve(const char *name) {
     return 0;
 }
 void runtime_mutex_report(void) {
-    printf("Runtime: mutexes created=%zu, locks=%zu, unlocks=%zu\n", created, locks, unlocks);
+    printf("Runtime: mutexes created=%zu, locks=%zu, unlocks=%zu; contended locks taken spinning=%zu, slept=%zu (GOW3_MUTEX_SPIN=%d)\n",
+           created, locks, unlocks, spin_hits, spin_misses, mutex_spins());
     printf("Runtime: condition variables created=%zu, waits=%zu, wakeups=%zu\n", conds, waits, wakeups);
 }
 
