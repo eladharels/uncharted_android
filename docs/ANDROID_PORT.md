@@ -320,6 +320,15 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    game broadcasts ~2,000 times a second in that mode. Disassembly: rebuild an ELF from the dump
    with `scripts/prepare.py`'s `parse_self` and `llvm-objdump` (image offsets are the ELF's
    virtual addresses).
+   **A/B (build c87ec43, Uncharted 2 gameplay at ~933 draws per frame, automated runs with
+   `tools/android/autorun.sh`):** old patch (`GOW3_JOB_SLEEP_WAIT=0`, two runs) 24-28 FPS,
+   4.2-5.0 cores (kernel 1.4-1.7), 1.7-2.7 million guest locks/s; new patch (two runs) 16-17 FPS,
+   **1.4 cores** (kernel 0.2), 65,000 locks/s, but ~540 condition waits/s of which ~520 timed out:
+   the work is not announced on that condition variable, so idle workers slept the full 10 ms
+   before they looked again. Hence `GOW3_JOB_WAIT_US` (default 1000; the 10 ms at `found + 0xb4`,
+   same in all three games): the workers wake every N us. One of three new-patch runs ended in a
+   GPU hang 26 s in, at boot (stuck after dispatch cs `1e8e11d0`, before draw ps `b1032a3f`); the
+   other two and both old-patch runs did not: not yet known whether it is related.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.

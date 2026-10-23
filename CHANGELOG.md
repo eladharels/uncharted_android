@@ -42,7 +42,11 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
 - `Guest lock callers` line: the guest code taking the locks (1 in 64 sampled, image offsets).
 - `GOW3_JOB_SLEEP=1` also removes the job loop's second "may sleep" check (after the lock), so
   the workers wait on their condition variable instead of locking and unlocking without pause
-  (2 million locks a second on the phone); `GOW3_JOB_SLEEP_WAIT=0` keeps the old patch.
+  (2 million locks a second on the phone); `GOW3_JOB_SLEEP_WAIT=0` keeps the old patch. Measured
+  (Uncharted 2 gameplay): 4.2-5.0 cores → 1.4, but 25 → 16 FPS (the 10 ms waits time out).
+- `GOW3_JOB_WAIT_US` (default 1000): the job workers' condition wait is shortened from 10 ms.
+- `tools/android/autorun.sh`: an unattended measured session on the phone (adb over wireless
+  debugging, launcher by UI dump, Cross presses into gameplay, summary, back to the Claude app).
 - Finding (Uncharted 2 menus, 4.3 cores in use): the six game job workers take 3.5 cores, 86% of
   their samples in futex calls of one contended guest mutex (`runtime_mutex.c`); the renderer ~0.5.
   `GOW3_JOB_SPIN=0` does not change it (menus and gameplay). Two new GPU crashes seen with that

@@ -296,7 +296,12 @@ static void patch_eop_tick_wait(uint64_t image_size) {
  * 1.6-2.5 million locks a second, a fifth of them colliding, each collision a futex wait and wake
  * (1.5-2.5 cores of kernel time, the job workers 3.5 of the process's 4.3 cores; 2026-10-23).
  * So the second je goes too and the workers sleep on the condition variable, which the game
- * broadcasts some 2,000 times a second in that mode. GOW3_JOB_SLEEP_WAIT=0 keeps it (comparison). */
+ * broadcasts some 2,000 times a second in that mode. GOW3_JOB_SLEEP_WAIT=0 keeps it (comparison).
+ * Measured: the process fell from 4.2-5.0 cores to 1.4 in Uncharted 2 gameplay, but 25 FPS to 16:
+ * nearly every wait timed out (the work is not announced on that condition variable), so a job
+ * waited up to the full 10 ms. GOW3_JOB_WAIT_US=N (default 1000, 50-10000) shortens that wait,
+ * the mov edx,10000 at found + 0xb4 (same place in all three games), so idle workers look for
+ * work every N us instead. */
 static void patch_job_spin(uint64_t image_size, const char *value, int sleep) {
     char *end = NULL;
     long n = value ? strtol(value, &end, 0) : 1000;
@@ -321,7 +326,21 @@ static void patch_job_spin(uint64_t image_size, const char *value, int sleep) {
         if (keep && keep[0] == '0') second = "; second check kept (GOW3_JOB_SLEEP_WAIT=0)";
         else if (found + 0xa3 + sizeof(wait_check) > image_size ||
                  memcmp(image + found + 0xa3, wait_check, sizeof(wait_check))) second = "; second check not found, left alone";
-        else { image[found + 0xa3 + 4] = 0x66; image[found + 0xa3 + 5] = 0x90; second = "; they wait on the condition variable too"; }
+        else {
+            image[found + 0xa3 + 4] = 0x66; image[found + 0xa3 + 5] = 0x90;
+            static const unsigned char wait_10ms[] = {0xba, 0x10, 0x27, 0x00, 0x00}; /* mov edx, 10000 */
+            const char *us_text = getenv("GOW3_JOB_WAIT_US");
+            char *us_end = NULL;
+            long us = us_text && us_text[0] ? strtol(us_text, &us_end, 10) : 1000;
+            if ((us_end && *us_end) || us < 50 || us > 10000) us = 1000;
+            static char described[96];
+            if (found + 0xb4 + sizeof(wait_10ms) <= image_size && !memcmp(image + found + 0xb4, wait_10ms, sizeof(wait_10ms))) {
+                uint32_t timeout = (uint32_t)us;
+                memcpy(image + found + 0xb4 + 1, &timeout, 4);
+                snprintf(described, sizeof(described), "; they wait on the condition variable too, %ld us at most", us);
+            } else snprintf(described, sizeof(described), "; they wait on the condition variable too (10 ms: timeout not found)");
+            second = described;
+        }
     }
     printf("Job spin: job workers spin %ld times before they sleep (was 1000)%s%s, at %#" PRIx64 "\n", n,
            sleep ? ", and may sleep in gameplay too" : "", second, found);
