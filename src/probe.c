@@ -1635,6 +1635,7 @@ int main(int argc, char **argv) {
      * JIT can translate them (no-op on x86-64 hosts). */
     guest_cpu_code((uintptr_t)image, round_page(size));
     guest_cpu_code((uintptr_t)traps, round_page((import_count + 1) * 32));
+    runtime_mutex_image((uintptr_t)image, round_page(size));
     /* The stub below jumps here as guest code: on x86-64 this is the raw function; with the JIT
      * it is the guest-callable thunk for it. */
     const uintptr_t handler = guest_cpu_host_function((void *)unresolved);

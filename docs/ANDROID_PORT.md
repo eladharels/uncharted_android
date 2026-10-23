@@ -298,6 +298,16 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    price of a collision. Next: find what keeps them on that lock (the broadcasts the game sends
    tens of thousands of times a second waking all six, or a poll under the lock): count guest
    lock, broadcast and wait calls per second in the 5-second statistics.
+   **Counted (build bdc1e5b, Uncharted 2 menus and intro, 30 FPS, caps at 1.5-1.7 GHz, 4.3-5.7
+   cores):** 1.6-2.0 million guest mutex locks per second, 290,000-460,000 of them (18-25%)
+   finding the lock taken; only 40-120 condition-variable waits per second (none timing out),
+   ~42 signals and 2,000-2,750 broadcasts. So it is not the broadcasts (a few thousand a
+   second cannot cause 400,000 collisions) and the workers almost never reach their
+   condition-variable sleep: they take a mutex some 300,000 times a second each, a poll under
+   a lock. Each collision is a futex wait and a futex wake in Bionic, which is the 1.5-2.5
+   cores of kernel time. Next: which lock and which guest code (the caller's guest address,
+   sampled in `mutex_lock`, against the executable in the dump), then a patch of that loop
+   like `GOW3_JOB_SPIN`'s, or a cheaper host path for that one mutex.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.
@@ -367,7 +377,10 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
   report counts the contended locks taken while spinning and those that slept.
 - `Guest sync/s: ...` with each 5-second window: the guest's mutex locks per second and how many
   found the lock taken, condition-variable waits (and how many timed out), signals and
-  broadcasts (`runtime_mutex_stats`). For the job workers' lock traffic.
+  broadcasts (`runtime_mutex_stats`). For the job workers' lock traffic. Then `Guest lock
+  callers`: one lock in 64 sampled, the top five by share, each as the image offset the lock
+  returns to, `<-` the next two image addresses on the guest stack (its callers, heuristically),
+  and the mutex; offsets read against the executable at the logged `Image base`.
 - `GOW3_BIG_CORES` (default 1 for Uncharted): the command processor, the draw recording,
   Vulkan recording and ring copy threads are kept on the cores whose maximum clock is at
   least 80% of the fastest core's (`Big cores:` line in the log). `2` extends it to the whole

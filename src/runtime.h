@@ -22,6 +22,8 @@ void runtime_restart(void);
 /* Prints the guest mutex and condition-variable calls per second since the last call
  * (runtime_mutex.c); the GPU library's 5-second statistics call it. */
 void runtime_mutex_stats(double seconds);
+/* The game image's range, so the sampled lock callers print as image offsets. */
+void runtime_mutex_image(uintptr_t base, size_t size);
 /* The guest's calling convention for host functions it calls. Elsewhere than x86-64 the guest CPU
  * (guest_cpu.h) converts guest calls to the host's convention. */
 #if defined(__x86_64__)

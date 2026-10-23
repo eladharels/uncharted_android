@@ -37,7 +37,9 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
   2.2 → 0.3 cores, user 2.0 → 4.9, total +0.5-1 core in the Uncharted 2 menus): the default is
   now 0.
 - `Guest sync/s` line in the 5-second statistics: guest mutex locks (and contended ones),
-  condition-variable waits, timeouts, signals and broadcasts per second.
+  condition-variable waits, timeouts, signals and broadcasts per second. First reading (Uncharted
+  2 menus): 1.6-2.0 million locks/s, 18-25% contended, ~60 cond waits/s, ~2,400 broadcasts/s.
+- `Guest lock callers` line: the guest code taking the locks (1 in 64 sampled, image offsets).
 - Finding (Uncharted 2 menus, 4.3 cores in use): the six game job workers take 3.5 cores, 86% of
   their samples in futex calls of one contended guest mutex (`runtime_mutex.c`); the renderer ~0.5.
   `GOW3_JOB_SPIN=0` does not change it (menus and gameplay). Two new GPU crashes seen with that

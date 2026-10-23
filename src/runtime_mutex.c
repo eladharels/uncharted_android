@@ -1,6 +1,8 @@
 /* Linux pthread-backed opaque PS4 mutex handles. No guest threads yet. */
 #define _GNU_SOURCE
 #include "runtime.h"
+#include "guest_cpu.h"
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -113,13 +115,95 @@ static struct {
     size_t locks, contended, cond_waits, cond_timeouts, signals, broadcasts;
 } window;
 #define COUNT(field) __atomic_fetch_add(&window.field, 1, __ATOMIC_RELAXED)
+/* Who takes the guest locks: one guest mutex_lock in CALLER_SAMPLE records its guest return
+ * address and the next CALLER_FRAMES - 1 image addresses found on the guest stack (the callers of
+ * the game's lock wrapper; a heuristic: stale return addresses can show up), with the mutex. As
+ * image offsets (probe.c hands over the range), so they read against the executable directly. */
+#define CALLER_SAMPLE 64
+#define CALLER_FRAMES 3
+#define CALLER_SLOTS 128
+typedef struct {
+    uint64_t frames[CALLER_FRAMES]; /* image offsets + 1 (0: empty slot) */
+    uintptr_t mutex;
+    size_t samples, contended;
+} CallerSlot;
+static CallerSlot callers[CALLER_SLOTS];
+static uintptr_t image_base, image_end;
+void runtime_mutex_image(uintptr_t base, size_t size) { image_base = base; image_end = base + size; }
+static void sample_caller(GuestMutex **mutex, int contended) {
+    uintptr_t sp = guest_cpu_stack_pointer();
+    if (!image_base || !sp) return;
+    uint64_t frames[CALLER_FRAMES] = {0};
+    unsigned found = 0;
+    /* [sp] is the return address of the guest's call of the import: the lock's caller. */
+    for (unsigned i = 0; i < 32 && found < CALLER_FRAMES; ++i) {
+        uintptr_t word = ((const uintptr_t *)sp)[i];
+        if (word > image_base && word < image_end) frames[found++] = word - image_base + 1;
+        else if (i == 0) return; /* not called from the image (a trap or a host path) */
+    }
+    unsigned h = (unsigned)((frames[0] ^ frames[1] * 31u) % CALLER_SLOTS);
+    for (unsigned probe = 0; probe < CALLER_SLOTS; ++probe, h = (h + 1) % CALLER_SLOTS) {
+        CallerSlot *slot = &callers[h];
+        uint64_t key = __atomic_load_n(&slot->frames[0], __ATOMIC_ACQUIRE);
+        if (!key) {
+            uint64_t empty = 0;
+            if (!__atomic_compare_exchange_n(&slot->frames[0], &empty, frames[0], 0, __ATOMIC_ACQ_REL,
+                                             __ATOMIC_ACQUIRE)) {
+                key = empty;
+            } else {
+                for (unsigned f = 1; f < CALLER_FRAMES; ++f)
+                    __atomic_store_n(&slot->frames[f], frames[f], __ATOMIC_RELAXED);
+                __atomic_store_n(&slot->mutex, (uintptr_t)*mutex, __ATOMIC_RELAXED);
+                key = frames[0];
+            }
+        }
+        if (key == frames[0] && __atomic_load_n(&slot->frames[1], __ATOMIC_RELAXED) == frames[1]) {
+            __atomic_fetch_add(&slot->samples, 1, __ATOMIC_RELAXED);
+            if (contended) __atomic_fetch_add(&slot->contended, 1, __ATOMIC_RELAXED);
+            return;
+        }
+    }
+}
+static void report_callers(void) {
+    CallerSlot top[5];
+    unsigned shown = 0;
+    size_t total = 0;
+    CallerSlot snapshot[CALLER_SLOTS];
+    for (unsigned i = 0; i < CALLER_SLOTS; ++i) {
+        CallerSlot *slot = &callers[i];
+        snapshot[i].samples = __atomic_exchange_n(&slot->samples, 0, __ATOMIC_RELAXED);
+        snapshot[i].contended = __atomic_exchange_n(&slot->contended, 0, __ATOMIC_RELAXED);
+        for (unsigned f = 0; f < CALLER_FRAMES; ++f) snapshot[i].frames[f] = __atomic_load_n(&slot->frames[f], __ATOMIC_RELAXED);
+        snapshot[i].mutex = __atomic_load_n(&slot->mutex, __ATOMIC_RELAXED);
+        total += snapshot[i].samples;
+    }
+    for (unsigned n = 0; n < 5; ++n) {
+        unsigned best = CALLER_SLOTS;
+        for (unsigned i = 0; i < CALLER_SLOTS; ++i)
+            if (snapshot[i].samples && (best == CALLER_SLOTS || snapshot[i].samples > snapshot[best].samples)) best = i;
+        if (best == CALLER_SLOTS) break;
+        top[shown++] = snapshot[best];
+        snapshot[best].samples = 0;
+    }
+    if (!total) return;
+    printf("Guest lock callers (1 in %d sampled, image offsets, caller <- its callers):", CALLER_SAMPLE);
+    for (unsigned n = 0; n < shown; ++n) {
+        printf("%s %.0f%% (%.0f%% contended) +%#" PRIx64, n ? ";" : "", 100.0 * top[n].samples / total,
+               100.0 * top[n].contended / top[n].samples, top[n].frames[0] - 1);
+        for (unsigned f = 1; f < CALLER_FRAMES && top[n].frames[f]; ++f) printf(" <- +%#" PRIx64, top[n].frames[f] - 1);
+        printf(" mutex %#" PRIxPTR, top[n].mutex);
+    }
+    printf("\n");
+}
 /* A mutex the caller already holds keeps its type's answer: trylock fails with EBUSY on an
  * error-checking one and the blocking lock below reports EDEADLK; a recursive one succeeds. */
-static int lock_native(pthread_mutex_t *native) {
+static int lock_native(pthread_mutex_t *native, int *contended) {
+    *contended = 0;
     COUNT(locks);
     int e = pthread_mutex_trylock(native);
     if (e != EBUSY) return e;
     COUNT(contended);
+    *contended = 1;
     int spins = mutex_spins();
     if (spins) {
         for (int i = 1; i < spins; ++i) {
@@ -143,12 +227,16 @@ void runtime_mutex_stats(double seconds) {
            "%.0f signals, %.0f broadcasts\n",
            locks / seconds, contended / seconds, locks ? 100.0 * contended / locks : 0.0,
            waits_ / seconds, timeouts / seconds, signals / seconds, broadcasts / seconds);
+    report_callers();
 }
 static ABI int32_t mutex_lock(GuestMutex **mutex) {
+    static __thread unsigned sample_tick;
     int32_t e = ensure_mutex(mutex);
     if (e) return e;
-    e = orbis_error(lock_native(&(*mutex)->native));
+    int contended;
+    e = orbis_error(lock_native(&(*mutex)->native, &contended));
     if (!e) ++locks;
+    if (++sample_tick % CALLER_SAMPLE == 0) sample_caller(mutex, contended);
     return e;
 }
 static ABI int32_t mutex_trylock(GuestMutex **mutex) {
