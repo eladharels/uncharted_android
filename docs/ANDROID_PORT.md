@@ -357,6 +357,21 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    cases. The `data_fmt = 15` stop (Uncharted 2) was a reserved buffer format in a descriptor read
    while the SRT walker faulted: such a descriptor now reads as zero instead of stopping the game
    (`MapNumberConversion`, `LowerBufferFormatInst`).
+   **The shaders (dumped 2026-10-24, Uncharted 2 menus, build f0fb698):** the guess above is
+   wrong for this pair. `cs 1e8e11d0` is a bloom downsample (16x4 threads, samples the HDR image,
+   luminance against an exposure read from a buffer, 2x2 average through `ShuffleXor` 1 and 16,
+   writes a half-size image); `ps b1032a3f` is a 13-tap blur of one image. Neither has a loop,
+   so neither can run forever: a loop-free draw that never ends on Adreno is a GPU memory
+   fault, the GPU reading unmapped or freed memory. Breadcrumbs stop in that draw or "between"
+   it and the dispatch (the image's layout transition), and the two boot hangs with full logs
+   follow heavy image churn (`image create 42.6 ms, image refresh 45.2 ms` and `35.3 / 6.7 ms` in
+   the window before). Suspect: `TextureCache::DeleteImage` frees through
+   `Scheduler::DeferOperation` at the tick being recorded, but with the draw pipe a draw still
+   queued for stage B (and deletions from guest threads through `UnmapMemory`) is recorded into a
+   later tick: freed after the earlier tick, the image is still read by the later one.
+   `GOW3_IMAGE_FREE_DELAY=N` (default 0, for the test) frees deleted images N submissions later;
+   to be compared, many Uncharted 2 boots each, 0 against 64 (`autorun.sh` now saves the whole
+   logcat on a crash: the driver's own fault report is there, not in the game's log).
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.

@@ -2182,6 +2182,15 @@ void TextureCache::DeleteImage(ImageId image_id) {
     }
 
     // Reclaim image and any image views it references.
+    // uncharted_android: GOW3_IMAGE_FREE_DELAY=N frees it N submissions after the current one.
+    // An image deleted on stage A or a guest thread (UnmapMemory) can still be used by draws
+    // queued for stage B, which are recorded into a later tick than the one current here: freed
+    // after this tick, the GPU would read freed memory (suspected cause of the device-lost hangs
+    // in a draw or at the barrier before it, 2026-10-24).
+    static const u64 free_delay = [] {
+        const char* env = std::getenv("GOW3_IMAGE_FREE_DELAY");
+        return env && env[0] ? std::strtoull(env, nullptr, 10) : u64{0};
+    }();
     scheduler.DeferOperation([this, image_id] {
         Image& image = slot_images[image_id];
         for (auto& backing : image.backing_images) {
@@ -2190,7 +2199,7 @@ void TextureCache::DeleteImage(ImageId image_id) {
             }
         }
         slot_images.Erase(image_id);
-    });
+    }, free_delay);
 }
 
 } // namespace VideoCore

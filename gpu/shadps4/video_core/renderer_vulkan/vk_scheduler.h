@@ -916,9 +916,12 @@ public:
 
     /// Defers an operation until the gpu has reached the current cpu tick.
     /// Will be run when submitting or calling PopPendingOperations.
-    void DeferOperation(Common::UniqueFunction<void>&& func) {
+    /// uncharted_android: `extra_ticks` later still, for resources that work still queued between
+    /// the draw pipe's stages (recorded into a later tick) may use. The queue is only polled, never
+    /// waited on, so a tick not yet submitted cannot block anything.
+    void DeferOperation(Common::UniqueFunction<void>&& func, u64 extra_ticks = 0) {
         std::unique_lock lk(pending_ops_mutex);
-        pending_ops.emplace(std::move(func), CurrentTick());
+        pending_ops.emplace(std::move(func), CurrentTick() + extra_ticks);
         num_pending_ops.fetch_add(1, std::memory_order_release);
     }
 

@@ -30,10 +30,15 @@ case $game in uc1) tab="Uncharted 1" ;; uc2) tab="Uncharted 2" ;; uc3) tab="Unch
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
 connected() { "$ADB" get-state >/dev/null 2>&1; }
+# mDNS keeps announcing the old port of wireless debugging beside the new one: each address is
+# checked on its own, failed ones are dropped (a leftover entry makes a plain get-state fail),
+# and the one that answers is pinned with ANDROID_SERIAL.
 connect() {
     connected && return 0
     for ep in $("$ADB" mdns services | awk '/_adb-tls-connect/ {print $3}'); do
-        "$ADB" connect "$ep" >/dev/null 2>&1; sleep 2; connected && return 0
+        "$ADB" connect "$ep" >/dev/null 2>&1; sleep 2
+        if [ "$("$ADB" -s "$ep" get-state 2>/dev/null)" = device ]; then export ANDROID_SERIAL=$ep; return 0; fi
+        "$ADB" disconnect "$ep" >/dev/null 2>&1
     done
     return 1
 }
@@ -82,7 +87,13 @@ start=$(date +%s) in_game=0 presses=0 last_press=0
 while :; do
     sleep 5
     now=$(($(date +%s) - start))
-    if game_log | grep -q "^STOP:"; then log "the game stopped (crash) at ${now}s"; break; fi
+    if game_log | grep -q "^STOP:"; then
+        log "the game stopped (crash) at ${now}s"
+        # The driver (Turnip, kgsl) reports GPU faults and hangs to the system log, not to the
+        # game's: keep all of it from this run.
+        mkdir -p "$out" && "$ADB" logcat -d -v threadtime > "$out/logcat-crash.txt" 2>/dev/null
+        break
+    fi
     draws=$(last_draws); draws=${draws:-0}
     if ((gameplay && !in_game)); then
         # The logos draw 9-25 per frame, the title menus 80-90 (Uncharted 1) and 140-300

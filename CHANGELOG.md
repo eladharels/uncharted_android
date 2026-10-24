@@ -54,6 +54,9 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
 - Finding: 5 of 7 GPU hangs are one compute-then-full-screen-draw pair (`cs 1e8e11d0`, `ps
   b1032a3f`), present since the first build; not caused by the job-loop change (crash-rate run:
   old patch 2 hangs in 4 boots, new patch 0 in 5).
+- `GOW3_IMAGE_FREE_DELAY=N` (default 0): deleted images are freed N submissions later, to test
+  whether the device-lost hangs are the GPU reading images freed while draws still queued in
+  the draw pipe use them (the two shaders of the common hang are loop-free).
 - `tools/android/autorun.sh`: an unattended measured session on the phone (adb over wireless
   debugging, launcher by UI dump, Cross presses into gameplay, summary, back to the Claude app).
 - Finding (Uncharted 2 menus, 4.3 cores in use): the six game job workers take 3.5 cores, 86% of
