@@ -1,0 +1,106 @@
+== symbols/bin
+readelf: Error: 'symbols/bin' is not an ordinary file
+== symbols/fex
+readelf: Error: 'symbols/fex' is not an ordinary file
+== symbols/gow3-probe
+  LOAD           0x000000 0x0000000000000000 0x0000000000000000 0x3550bc 0x3550bc R   0x4000
+  LOAD           0x3550c0 0x00000000003590c0 0x00000000003590c0 0x9aeee0 0x9aeee0 R E 0x4000
+  LOAD           0xd03fc0 0x0000000000d0bfc0 0x0000000000d0bfc0 0x06d368 0x06e040 RW  0x4000
+  LOAD           0xd71330 0x0000000000d7d330 0x0000000000d7d330 0x002618 0x1676f48 RW  0x4000
+  TLS            0xd03fc0 0x0000000000d0bfc0 0x0000000000d0bfc0 0x000000 0x000a24 R   0x40
+== symbols/gpu
+readelf: Error: 'symbols/gpu' is not an ordinary file
+== symbols/libgow3cpu.so
+  LOAD           0x000000 0x0000000000000000 0x0000000000000000 0x04cf48 0x04cf48 R   0x4000
+  LOAD           0x04cf50 0x0000000000050f50 0x0000000000050f50 0x167370 0x167370 R E 0x4000
+  LOAD           0x1b42c0 0x00000000001bc2c0 0x00000000001bc2c0 0x149a48 0x149d40 RW  0x4000
+  LOAD           0x2fdd08 0x0000000000309d08 0x0000000000309d08 0x000764 0x081808 RW  0x4000
+  TLS            0x1b42c0 0x00000000001bc2c0 0x00000000001bc2c0 0x000008 0x000020 R   0x8
+== symbols/libgow3gpu.so
+  LOAD           0x000000 0x0000000000000000 0x0000000000000000 0xb20c94 0xb20c94 R   0x4000
+  LOAD           0xb20ca0 0x0000000000b24ca0 0x0000000000b24ca0 0xe8d600 0xe8d600 R E 0x4000
+  LOAD           0x19ae2a0 0x00000000019b62a0 0x00000000019b62a0 0x0cca18 0x0ccd60 RW  0x4000
+  LOAD           0x1a7acb8 0x0000000001a86cb8 0x0000000001a86cb8 0x006190 0x44ee4d0 RW  0x4000
+  TLS            0x19ae2a0 0x00000000019b62a0 0x00000000019b62a0 0x000001 0x002550 R   0x8
+== symbols of interest
+0000000000b366fc t AmdGpu::Liverpool::Task AmdGpu::Liverpool::ProcessCompute<false>(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned int) (.destroy)
+0000000000b35028 t AmdGpu::Liverpool::Task AmdGpu::Liverpool::ProcessCompute<false>(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned int) (.resume)
+0000000000b34fd4 t AmdGpu::Liverpool::Task AmdGpu::Liverpool::ProcessCompute<true>(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned int) (.destroy)
+0000000000b33a00 t AmdGpu::Liverpool::Task AmdGpu::Liverpool::ProcessCompute<true>(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned int) (.resume)
+0000000000b27c18 T AmdGpu::Liverpool::ProcessCeUpdate(std::__ndk1::span<unsigned int const, 18446744073709551615ul>)
+0000000000b30d34 t AmdGpu::Liverpool::ProcessCeUpdate(std::__ndk1::span<unsigned int const, 18446744073709551615ul>) (.destroy)
+0000000000b309c4 t AmdGpu::Liverpool::ProcessCeUpdate(std::__ndk1::span<unsigned int const, 18446744073709551615ul>) (.resume)
+0000000000b26f9c T AmdGpu::Liverpool::ProcessCommands()
+0000000000b2873c T AmdGpu::Liverpool::ProcessGraphics(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned long)
+0000000000b339f8 t AmdGpu::Liverpool::ProcessGraphics(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned long) (.destroy)
+0000000000b30d3c t AmdGpu::Liverpool::ProcessGraphics(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned long) (.resume)
+0000000000b26328 T AmdGpu::Liverpool::Process(std::__ndk1::stop_token)
+0000000000c41c28 T Vulkan::Rasterizer::DrainDrawPipe(unsigned int, unsigned int, char const*)
+0000000000c3e804 T Vulkan::Rasterizer::RunDrawPacket(void*, unsigned char const*, unsigned int)
+0000000000c50758 T Vulkan::Rasterizer::DispatchDirect(bool)
+0000000000c63654 T Vulkan::Rasterizer::GetGpuCommandProcessorThread()
+0000000000c6366c T Vulkan::Rasterizer::GetGpuCommandProcessorThreadId()
+0000000000c49fec T Vulkan::Rasterizer::Draw(bool, unsigned int, Vulkan::PreparedDraw const*)
+0000000000c8c270 T Vulkan::Scheduler::RecorderThread(std::__ndk1::stop_token)
+0000000000c8ecd4 T Vulkan::Scheduler::WaitHostCopies()
+0000000000d96834 T Libraries::GnmDriver::sceGnmDispatchDirect(unsigned int*, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int)
+0000000000b2df78 t std::__ndk1::stop_callback<bool std::__ndk1::condition_variable_any::wait[abi:ne210000]<std::__ndk1::unique_lock<std::__ndk1::mutex>, AmdGpu::Liverpool::Process(std::__ndk1::stop_token)::$_0>(std::__ndk1::unique_lock<std::__ndk1::mutex>&, std::__ndk1::stop_token, AmdGpu::Liverpool::Process(std::__ndk1::stop_token)::$_0)::'lambda'()>::~stop_callback[abi:ne210000]()
+0000000000c94980 t std::__ndk1::stop_callback<bool std::__ndk1::condition_variable_any::wait[abi:ne210000]<std::__ndk1::unique_lock<std::__ndk1::mutex>, Vulkan::Scheduler::RecorderThread(std::__ndk1::stop_token)::$_0>(std::__ndk1::unique_lock<std::__ndk1::mutex>&, std::__ndk1::stop_token, Vulkan::Scheduler::RecorderThread(std::__ndk1::stop_token)::$_0)::'lambda'()>::~stop_callback[abi:ne210000]()
+0000000000b2e264 t bool std::__ndk1::__libcpp_thread_poll_with_backoff[abi:ne210000]<void std::__ndk1::__atomic_wait_unless[abi:ne210000]<std::__ndk1::__atomic_base<bool, false>, void std::__ndk1::__atomic_wait[abi:ne210000]<std::__ndk1::__atomic_base<bool, false> const, bool>(std::__ndk1::__atomic_base<bool, false> const&, bool, std::__ndk1::memory_order)::'lambda'(bool const&)>(std::__ndk1::__atomic_base<bool, false> const const&, std::__ndk1::memory_order, bool&&)::'lambda'(), std::__ndk1::__atomic_wait_backoff_impl<std::__ndk1::__atomic_base<bool, false>, void std::__ndk1::__atomic_wait[abi:ne210000]<std::__ndk1::__atomic_base<bool, false> const, bool>(std::__ndk1::__atomic_base<bool, false> const&, bool, std::__ndk1::memory_order)::'lambda'(bool const&)>&>(std::__ndk1::__atomic_base<bool, false> const&&, bool&&, std::__ndk1::chrono::duration<long long, std::__ndk1::ratio<1l, 1000000000l>>)
+0000000000b2ae90 t bool std::__ndk1::__libcpp_thread_poll_with_backoff[abi:ne210000]<void std::__ndk1::__atomic_wait_unless[abi:ne210000]<std::__ndk1::__atomic_base<unsigned int, false>, void std::__ndk1::__atomic_wait[abi:ne210000]<std::__ndk1::__atomic_base<unsigned int, false> const, unsigned int>(std::__ndk1::__atomic_base<unsigned int, false> const&, unsigned int, std::__ndk1::memory_order)::'lambda'(unsigned int const&)>(std::__ndk1::__atomic_base<unsigned int, false> const const&, std::__ndk1::memory_order, unsigned int&&)::'lambda'(), std::__ndk1::__atomic_wait_backoff_impl<std::__ndk1::__atomic_base<unsigned int, false>, void std::__ndk1::__atomic_wait[abi:ne210000]<std::__ndk1::__atomic_base<unsigned int, false> const, unsigned int>(std::__ndk1::__atomic_base<unsigned int, false> const&, unsigned int, std::__ndk1::memory_order)::'lambda'(unsigned int const&)>&>(std::__ndk1::__atomic_base<unsigned int, false> const&&, unsigned int&&, std::__ndk1::chrono::duration<long long, std::__ndk1::ratio<1l, 1000000000l>>)
+0000000000c63c7c t bool std::__ndk1::__libcpp_thread_poll_with_backoff[abi:ne210000]<void std::__ndk1::__atomic_wait_unless[abi:ne210000]<std::__ndk1::__atomic_base<unsigned long, false>, void std::__ndk1::__atomic_wait[abi:ne210000]<std::__ndk1::__atomic_base<unsigned long, false> const, unsigned long>(std::__ndk1::__atomic_base<unsigned long, false> const&, unsigned long, std::__ndk1::memory_order)::'lambda'(unsigned long const&)>(std::__ndk1::__atomic_base<unsigned long, false> const const&, std::__ndk1::memory_order, unsigned long&&)::'lambda'(), std::__ndk1::__atomic_wait_backoff_impl<std::__ndk1::__atomic_base<unsigned long, false>, void std::__ndk1::__atomic_wait[abi:ne210000]<std::__ndk1::__atomic_base<unsigned long, false> const, unsigned long>(std::__ndk1::__atomic_base<unsigned long, false> const&, unsigned long, std::__ndk1::memory_order)::'lambda'(unsigned long const&)>&>(std::__ndk1::__atomic_base<unsigned long, false> const&&, unsigned long&&, std::__ndk1::chrono::duration<long long, std::__ndk1::ratio<1l, 1000000000l>>)
+0000000000b5e580 t bool std::__ndk1::__libcpp_thread_poll_with_backoff[abi:ne210000]<void std::__ndk1::__atomic_wait_unless[abi:ne210000]<std::__ndk1::atomic<long>, std::__ndk1::__atomic_semaphore_base::acquire[abi:ne210000]()::'lambda'(long&)>(std::__ndk1::atomic<long> const&, std::__ndk1::memory_order, std::__ndk1::__atomic_semaphore_base::acquire[abi:ne210000]()::'lambda'(long&)&&)::'lambda'(), std::__ndk1::__atomic_wait_backoff_impl<std::__ndk1::atomic<long>, std::__ndk1::__atomic_semaphore_base::acquire[abi:ne210000]()::'lambda'(long&)>&>(std::__ndk1::atomic<long>&&, std::__ndk1::__atomic_semaphore_base::acquire[abi:ne210000]()::'lambda'(long&)&&, std::__ndk1::chrono::duration<long long, std::__ndk1::ratio<1l, 1000000000l>>)
+0000000000b288f8 t AmdGpu::Liverpool::ProcessGraphics(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned long)::$_2::operator()() const
+0000000000b28ab0 t AmdGpu::Liverpool::ProcessGraphics(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned long)::$_14::operator()() const
+0000000000b29734 t AmdGpu::Liverpool::ProcessGraphics(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned long)::$_15::operator()() const
+0000000000b29758 t AmdGpu::Liverpool::ProcessGraphics(std::__ndk1::span<unsigned int const, 18446744073709551615ul>, std::__ndk1::span<unsigned int const, 18446744073709551615ul>, unsigned long)::$_16::operator()() const
+0000000000c45dc4 t Vulkan::Rasterizer::RunDrawPacket(void*, unsigned char const*, unsigned int)::$_0::operator()() const
+0000000000c45e28 t Vulkan::Rasterizer::RunDrawPacket(void*, unsigned char const*, unsigned int)::$_1::operator()() const
+0000000000b2dfd4 t std::__ndk1::stop_callback<bool std::__ndk1::condition_variable_any::wait[abi:ne210000]<std::__ndk1::unique_lock<std::__ndk1::mutex>, AmdGpu::Liverpool::Process(std::__ndk1::stop_token)::$_0>(std::__ndk1::unique_lock<std::__ndk1::mutex>&, std::__ndk1::stop_token, AmdGpu::Liverpool::Process(std::__ndk1::stop_token)::$_0)::'lambda'()>::stop_callback[abi:ne210000]<std::__ndk1::__intrusive_shared_ptr<std::__ndk1::__stop_state> const&, bool std::__ndk1::condition_variable_any::wait[abi:ne210000]<std::__ndk1::unique_lock<std::__ndk1::mutex>, AmdGpu::Liverpool::Process(std::__ndk1::stop_token)::$_0>(std::__ndk1::unique_lock<std::__ndk1::mutex>&, std::__ndk1::stop_token, AmdGpu::Liverpool::Process(std::__ndk1::stop_token)::$_0)::'lambda'()>(std::__ndk1::__private_constructor_tag, std::__ndk1::unique_lock<std::__ndk1::mutex>&&, AmdGpu::Liverpool::Process(std::__ndk1::stop_token)::$_0&&)::'lambda'(std::__ndk1::__stop_callback_base*)::__invoke(std::__ndk1::__stop_callback_base*)
+0000000000c949dc t std::__ndk1::stop_callback<bool std::__ndk1::condition_variable_any::wait[abi:ne210000]<std::__ndk1::unique_lock<std::__ndk1::mutex>, Vulkan::Scheduler::RecorderThread(std::__ndk1::stop_token)::$_0>(std::__ndk1::unique_lock<std::__ndk1::mutex>&, std::__ndk1::stop_token, Vulkan::Scheduler::RecorderThread(std::__ndk1::stop_token)::$_0)::'lambda'()>::stop_callback[abi:ne210000]<std::__ndk1::__intrusive_shared_ptr<std::__ndk1::__stop_state> const&, bool std::__ndk1::condition_variable_any::wait[abi:ne210000]<std::__ndk1::unique_lock<std::__ndk1::mutex>, Vulkan::Scheduler::RecorderThread(std::__ndk1::stop_token)::$_0>(std::__ndk1::unique_lock<std::__ndk1::mutex>&, std::__ndk1::stop_token, Vulkan::Scheduler::RecorderThread(std::__ndk1::stop_token)::$_0)::'lambda'()>(std::__ndk1::__private_constructor_tag, std::__ndk1::unique_lock<std::__ndk1::mutex>&&, Vulkan::Scheduler::RecorderThread(std::__ndk1::stop_token)::$_0&&)::'lambda'(std::__ndk1::__stop_callback_base*)::__invoke(std::__ndk1::__stop_callback_base*)
+== llvm-symbolizer on known vaddrs (poll_with_backoff, WaitHostCopies, liverpool, RunDrawPacket)
+__decrement_ref_count
+intrusive_shared_ptr.h:115:79
+~__intrusive_shared_ptr
+intrusive_shared_ptr.h:84:7
+~stop_token
+stop_token.h:33:83
+~__tuple_leaf
+tuple:307:7
+~__tuple_impl
+tuple:465:37
+~tuple
+tuple:538:28
+operator()
+unique_ptr.h:78:5
+reset
+unique_ptr.h:300:7
+~unique_ptr
+unique_ptr.h:269:71
+__thread_proxy<std::__ndk1::tuple<std::__ndk1::unique_ptr<std::__ndk1::__thread_struct, std::__ndk1::default_delete<std::__ndk1::__thread_struct> >, (lambda at /home/runner/work/uncharted_android/uncharted_android/gpu/shadps4/video_core/renderer_vulkan/vk_draw_pipe.h:41:31), std::__ndk1::stop_token> >
+thread.h:210:1
+
+reset
+unique_ptr.h:298:19
+operator=
+unique_ptr.h:240:5
+CurrentChunk
+vk_scheduler.h:944:26
+KickRecording
+vk_scheduler.cpp:304:42
+
+RunEventWriteEop
+liverpool.cpp:619:1
+
+RunDrawPacket
+vk_rasterizer.cpp:1123:46
+
+RingCopier
+unique_ptr.h:0:5
+
+== symbolize.py resolve on the same runtime addresses (map 74f7b5a000 off b21000)
+0xc602ac __thread_proxy<std::__ndk1::tuple<std::__ndk1::unique_ptr<std::__ndk1::__thread_struct, std::__ndk1::default_delete<std::__ndk1::__thread_struct> >, (lambda at /home/runner/work/uncharted_android/uncharted_android/gpu/shadps4/video_core/renderer_vulkan/vk_draw_pipe.h:41:31), std::__ndk1::stop_token> > [__decrement_ref_count] (intrusive_shared_ptr.h:115)
+0xc8b324 KickRecording [reset] (unique_ptr.h:298)
+0xb25158 RunEventWriteEop (liverpool.cpp:619)
+0xc3ae18 RunDrawPacket (vk_rasterizer.cpp:1123)
+0xc60b38 RingCopier (unique_ptr.h:0)
