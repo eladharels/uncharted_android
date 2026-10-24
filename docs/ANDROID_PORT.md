@@ -402,6 +402,23 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    kernel log over 2 boots each: default 0, `TU_DEBUG=sysmem` (no binning) 0, FPS 30 both: too
    few boots (the clean boots of the hang hunt had none either), so not yet decided. To settle:
    more boots per setting with a bug report every two, or the Standard driver build.
+   **Driver tests (same day, build 882fe4b, Uncharted 2, CP faults counted from a bug report
+   per two runs):** the Standard build of the same author (`v27.0.0-20261022-r6`; the exact twin
+   of `20261021-r4` is no longer offered) still faults: 3 recovered in 6 menu boots, among them
+   the same `CP BV opcode error 0x70970001`, so the Adreno 740 flag is not the cause. Turnip's
+   strings name a driconf `tu_allow_concurrent_binning` ("the CB is disabled by default because
+   it regresses performance on desktop games") and a `TU_DEBUG=nocb`. There are two kinds of
+   fault: `CP opcode error, opcode=0x00000000` (zeros executed) and `CP BV opcode error
+   0x70970001` (the binning stream rejecting `CP_THREAD_CONTROL`, the kind of the fatal burst).
+   Menus, 6 boots each, Standard driver: default 3 faults, `TU_DEBUG=nocb` 0. Gameplay (✕ ✕ into
+   Uncharted 2, ~1,240 draws per frame, 90 s, 2 runs each): default 10 faults, all zeros;
+   `nocb` 4, all BV; ~23 FPS and ~2.1 cores both. So `nocb` removes the zeros-executed faults
+   at no cost but not the BV one. `TU_DEBUG=sysmem` (no binning stream): 5 faults, all zeros,
+   none BV, ~23 FPS, 2.6 cores. **`TU_DEBUG=nocb,sysmem`: 0 faults** (2 runs, ~23 FPS, 2.6
+   cores). Faults are recovered (no device loss) unless 3 come within 2 s. `run-bionic.sh` now
+   sets `TU_DEBUG=nocb,sysmem` for the Uncharted games (before `uncharted-env.txt`, which can
+   change or clear it) and prints `Turnip: TU_DEBUG=…`; to be confirmed over longer gameplay with
+   that build and no env file.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.

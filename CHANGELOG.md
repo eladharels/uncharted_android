@@ -54,6 +54,10 @@ Galaxy S24 Ultra, Snapdragon 8 Gen 3 / Adreno 750, with a Turnip driver).
 - Finding: 5 of 7 GPU hangs are one compute-then-full-screen-draw pair (`cs 1e8e11d0`, `ps
   b1032a3f`), present since the first build; not caused by the job-loop change (crash-rate run:
   old patch 2 hangs in 4 boots, new patch 0 in 5).
+- Uncharted runs with `TU_DEBUG=nocb,sysmem` (no concurrent binning, direct rendering): Turnip's
+  command processor faulted on the Adreno 750 (opcode errors, the cause of the device-lost
+  hangs); gameplay test: 10 faults in 2 runs by default, 0 with both, same FPS.
+  `uncharted-env.txt` can change or clear it.
 - `GOW3_IMAGE_FREE_DELAY=N` (default 0): deleted images are freed N submissions later, to test
   whether the device-lost hangs are the GPU reading images freed while draws still queued in
   the draw pipe use them (the two shaders of the common hang are loop-free).

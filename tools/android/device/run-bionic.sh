@@ -63,6 +63,12 @@ if [ -f "$launch_env" ]; then
         [ -n "$value" ] && export "$key=$value"
     done
     [ -n "$(derived GOW3_UC_GAME)" ] && echo "Uncharted: $(derived GOW3_UC_GAME) ($GOW3_EXECUTABLE)"
+    # uncharted_android: Turnip on the Adreno 750 faults in its command processor with the
+    # Uncharted games (kgsl, 2026-10-24): "CP opcode error, opcode=0" without nocb, "CP BV opcode
+    # error 0x70970001" (binning stream) without sysmem; three within 2 s end in a device loss.
+    # Gameplay, 2 runs each: default 10 faults, nocb 4, sysmem 5, both 0, all at the same FPS.
+    # Other drivers ignore TU_DEBUG; uncharted-env.txt below can change or clear it (TU_DEBUG=).
+    [ -n "$(derived GOW3_UC_GAME)" ] && export TU_DEBUG=nocb,sysmem
     # uncharted_android: player overrides for experiments, without a new APK: uncharted-env.txt
     # in the game folder (a file manager can edit it), one NAME=value per line; an empty
     # value unsets the option; lines starting with # are ignored. Applied after the game's own
@@ -91,6 +97,7 @@ if [ -f "$launch_env" ]; then
         done < "$uc_env_file"
     fi
     echo "Derived patches: ${GOW3_PATCH_STATUS:-unknown}; ${GOW3_PATCHES:-none}; DMEM ${GOW3_DMEM_MB:-?}MiB, vblank ${GOW3_VBLANK_HZ:-?}Hz"
+    echo "Turnip: TU_DEBUG=${TU_DEBUG:-}"
 fi
 setting() { sed -n "s/^$1=//p" "$GOW3_CONFIG" 2>/dev/null | tail -n 1; }
 # app 的 pad 状态文件（PadBridge.java）与文字请求（角色名：它的触屏键盘）。

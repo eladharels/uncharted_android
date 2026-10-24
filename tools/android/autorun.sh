@@ -35,7 +35,7 @@ connected() { "$ADB" get-state >/dev/null 2>&1; }
 # and the one that answers is pinned with ANDROID_SERIAL.
 connect() {
     connected && return 0
-    for ep in $("$ADB" mdns services | awk '/_adb-tls-connect/ {print $3}'); do
+    for ep in $("$ADB" mdns services | awk '/_adb-tls-connect/ {print $NF}'); do
         "$ADB" connect "$ep" >/dev/null 2>&1; sleep 2
         if [ "$("$ADB" -s "$ep" get-state 2>/dev/null)" = device ]; then export ANDROID_SERIAL=$ep; return 0; fi
         "$ADB" disconnect "$ep" >/dev/null 2>&1
