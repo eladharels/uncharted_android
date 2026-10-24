@@ -372,6 +372,19 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    `GOW3_IMAGE_FREE_DELAY=N` (default 0, for the test) frees deleted images N submissions later;
    to be compared, many Uncharted 2 boots each, 0 against 64 (`autorun.sh` now saves the whole
    logcat on a crash: the driver's own fault report is there, not in the game's log).
+   **Measured (build 882fe4b, 5+5 Uncharted 2 boots, 90 s in the menus each, alternating):**
+   delay 0 no hang in 5; delay 64 one hang in 5, 115 s in, of another kind: stuck in
+   `cs 6a6422a9` (256x1x1), which the dump shows is a plain loop-free copy (`dst[i] = src[i]` for
+   i below a count) between two buffers, so again a memory fault rather than a long-running
+   shader, and on buffers this time, which an image-free delay cannot cover. So the delay is not
+   shown to help; it stays 0. Logcat holds nothing from the driver beyond the device loss
+   (`vendor.mesa.vk.abort.on.device.loss`); the kgsl fault report (faulting address, IOMMU
+   context) is in the kernel log, which adb cannot read (`/proc/ap_klog`, `dmesg`: permission
+   denied) but a bug report carries, Samsung's `/proc/ap_klog` reaching back only ~5 minutes.
+   `autorun.sh` now takes a bug report right after a crash and keeps only its GPU kernel lines
+   (`kernel-gpu.txt`). Outside a crash the kernel log shows `kgsl kgsl-3d0: CP: AHB bus error,
+   CP_RL_ERROR_DETAILS_0:0x10008e07` every ~5 s with the game closed (background, probably not
+   ours). Next: repeat boots until one hangs, and read the kgsl report.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.

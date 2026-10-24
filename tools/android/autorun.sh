@@ -92,6 +92,17 @@ while :; do
         # The driver (Turnip, kgsl) reports GPU faults and hangs to the system log, not to the
         # game's: keep all of it from this run.
         mkdir -p "$out" && "$ADB" logcat -d -v threadtime > "$out/logcat-crash.txt" 2>/dev/null
+        # The GPU fault itself (kgsl: page fault address, hang) is only in the kernel log, which
+        # adb cannot read; a bug report carries it (Samsung's /proc/ap_klog covers ~5 minutes).
+        # Only its GPU lines are kept: the rest of a bug report is personal data we do not need.
+        log "taking a bug report for the kernel's GPU messages (~3 minutes)"
+        if "$ADB" bugreport "$out/bugreport.zip" >/dev/null 2>&1; then
+            unzip -p "$out/bugreport.zip" 'dumpstate-*.txt' 'bugreport-*.txt' 2>/dev/null |
+                grep -iE "kgsl|adreno|gmu|iommu|smmu|gpu fault|page fault" > "$out/kernel-gpu.txt"
+            log "kernel GPU lines: $(wc -l < "$out/kernel-gpu.txt")"
+        fi
+        rm -f "$out/bugreport.zip"
+        "$ADB" shell 'rm -f /data/user_de/0/com.android.shell/files/bugreports/*' >/dev/null 2>&1
         break
     fi
     draws=$(last_draws); draws=${draws:-0}
