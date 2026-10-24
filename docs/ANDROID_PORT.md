@@ -385,6 +385,23 @@ Measured on a Galaxy S24 Ultra at 540p, in this order of expected gain:
    (`kernel-gpu.txt`). Outside a crash the kernel log shows `kgsl kgsl-3d0: CP: AHB bus error,
    CP_RL_ERROR_DETAILS_0:0x10008e07` every ~5 s with the game closed (background, probably not
    ours). Next: repeat boots until one hangs, and read the kgsl report.
+   **The kgsl report (2026-10-24, build 882fe4b, Uncharted 2 menus, hang on the 5th boot):**
+   these are **command-processor faults, not memory faults**. Run 4, which looked clean, had
+   three that the GPU recovered from (`CP opcode error interrupt | opcode=0x00000000` twice, at
+   the same IB1 address and offset `0x1241` 10 s apart, `ib2 …/0000`; `CP | Protected mode error |
+   WRITE | addr=0x00000`); run 5 died on `gpu fault threshold exceeded 3 faults in 2000 msecs` after
+   `CP BV opcode error | opcode=0x70970001` three times. So faults are more frequent than the
+   device losses (each loss is a burst of 3 in 2 s), the CP executes zeros (or a protected write
+   of register 0) inside an IB2, and the fatal burst is `0x70970001`: a PKT7 with opcode 0x17,
+   `CP_THREAD_CONTROL` on a7xx, rejected by the BV (binning) stream, which Turnip only emits for
+   concurrent binning. Ruled out on the way: early reuse of our command buffers (a buffer's pool
+   tick is taken after `NextTick`, never below what its submission signals), pipelines
+   destroyed in flight (only the debug `ReplaceShader` and the start-up warm-up erase any). The
+   lead is the driver's concurrent binning on the Adreno 750 (the `8G2-OneUI` build is the
+   Standard one plus a flag for the Adreno 740). A first comparison counted CP faults in the
+   kernel log over 2 boots each: default 0, `TU_DEBUG=sysmem` (no binning) 0, FPS 30 both: too
+   few boots (the clean boots of the hang hunt had none either), so not yet decided. To settle:
+   more boots per setting with a bug report every two, or the Standard driver build.
    Big cores stay the default (no run showed harm). The frame times are quantized to vblank
    multiples (33.3, 50, 66.7 ms) by the game's own pacing, so the FPS figures move in steps
    of 30, 20, 15.
